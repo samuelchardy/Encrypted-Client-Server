@@ -5,7 +5,7 @@ cr2 = crypto()
 
 
 class Account():
-  def signup(self,uname, pass1, pass2, sec):
+  def signup(self, uname, pass1, pass2, sec):
     if(pass1 == pass2):
         #accept
         #generate user key

@@ -1,7 +1,7 @@
 import socket
 from password_strength import PasswordStats
-from Crypto2 import crypto
-from messageParser import messageParser
+from Crypto2           import crypto
+from messageParser     import messageParser
 
 #INITIALISE ENCRYPTION OBJECT/ KEYS
 c = crypto()
@@ -10,12 +10,11 @@ crypto.storeKeys(c)
 publicKey = crypto.loadPublicKey(c)
 
 #INITIALISE MESSAGEPARSER
-parser = messageParser();
+parser = messageParser()
 
-
+#SETUP SERVER
 host = socket.gethostname()
 port = 9999
-
 serverSocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 serverSocket.bind((host, port))
 serverSocket.listen(1)

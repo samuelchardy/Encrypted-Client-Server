@@ -1,11 +1,16 @@
 import socket
-import hashlib
-from Crypto2 import crypto
+import os
+from Crypto2       import crypto
+from messageParser import messageParser
 
+#INITIALISE ENCRYPTION OBJECT/ KEYS
 cr = crypto()
 crypto.genKeys(cr)
 crypto.storeKeys(cr)
 publicKey = crypto.loadPublicKey(cr)
+
+#INITIALISE MESSAGEPARSER
+parser = messageParser()
 
 #CONNECTING TO THE SERVER
 clientSocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -21,26 +26,32 @@ serverPublicKey = crypto.loadPublicKeyFromBytes(cr, serverPublicKey)
 #SEND CLIENTS PUBLIC KEY
 clientSocket.send(publicKey)
 
-
-
-#LOGIN
+#TEST MESSAGE
 data = "Bingo Bango Bongo!"
-dataLength  = len(data)
-dataPaddingLen = 128-len(data) 
-data = data + (' ' * dataPaddingLen)
-
-msg = "1" + str(dataLength) + data
-checksum = hashlib.md5(bytes(msg)) 
-msg = msg + bytes(checksum)
-
-print("datalen: " + str(len("Bingo Bango Bongo!")))
-print("msg : " + str(len(msg)))
-
-sentMsg = crypto.encryptData(cr, msg, serverPublicKey)
-print("msg pe: " + str(len(sentMsg)))
+sentMsg = messageParser.make(parser, cr, serverPublicKey, 1, data)
 #signature = crypto.signMessage(cr, sentMsg)
-
 clientSocket.send(sentMsg)
+
+
+#USER INTERFACE
+while True:
+  os.system('cls')
+  print("------------------------\n1: Log in\n2: Sign up\n------------------------\n")
+  choice = raw_input()
+
+  if(choice == "1"):
+    #LOG IN - (1, data length, "username,password,", checksum)
+    os.system('cls')
+    print("Username: ")
+    userName = raw_input()
+    print("Password: ")
+    password = raw_input()
+    dataA = userName + "," + password + ","
+    completeMsg = messageParser.make(parser, cr, serverPublicKey, 1, dataA)
+    clientSocket.send(sentMsg)
+  elif(choice == "2"):
+    os.system('cls')
+
 
 
 clientSocket.close()
