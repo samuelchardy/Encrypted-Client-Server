@@ -20,5 +20,7 @@ class messageParser:
     checksum = hashlib.md5(bytes(msg))
     msg = msg + bytes(checksum)
 
+    print(msg)
+
     encryptedMsg = crypto.encryptData(cr, msg, publicKey)
     return encryptedMsg
