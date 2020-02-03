@@ -28,14 +28,6 @@ serverPublicKey = crypto.loadPublicKeyFromBytes(cr, serverPublicKey)
 #SEND CLIENTS PUBLIC KEY
 clientSocket.send(publicKey)
 
-#TEST MESSAGE
-#data = "Bingo Bango Bongo!"
-#sentMsg = messageParser.make(parser, cr, serverPublicKey, 255, data)
-#print(sentMsg)
-#signature = crypto.signMessage(cr, sentMsg)
-#clientSocket.send(sentMsg)
-
-
 #USER INTERFACE
 while True:
   os.system('clear')
@@ -73,7 +65,10 @@ while True:
     clientSocket.send(completeMsg)
 
   response = clientSocket.recv(1024)
-  print(response)
+  response = crypto.decryptData(cr, response)
+  command, dataLen, data, checksum = messageParser.parse(parser, response)
+  print(data)
+  time.sleep(5)
 
 clientSocket.close()
 #print (decryptedMsg)

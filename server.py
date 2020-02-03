@@ -57,7 +57,12 @@ while True:
       if(int(dataLen) < 255):
         if(command == "0"):
           print("\ntrying to log in")
+
+
+          
         elif(command == "1"):
+          errorActive = 0
+          completeMsg = ""
           print("\ntrying to sign up")
           splitData = str.split(data,",")
           username = splitData[0]
@@ -65,17 +70,24 @@ while True:
           password2 = splitData[2]
 
           listOfErrors = policy.test(password)
+          if(password != password2):
+            errorActive = 1
+            completeMsg = "Error: Passwords do not match, please try again!\n"
+
           if(len(listOfErrors) > 0):
+            errorActive = 1
             errorMsg = "Error: Your password must contain the following: "
             for error in listOfErrors:
               errorMsg += str(error) + " " 
             print(errorMsg)
-            completeMsg = messageParser.make(parser, c, clientPublicKey, 1, errorMsg)
+            completeMsg = completeMsg + errorMsg
 
-          if(password != password2):
-            completeMsg = messageParser.make(parser, c, clientPublicKey, 1, "Error: Passwords do not match, please try again!")
-          
-
+          if(errorActive == 1):
+            completeMsg = messageParser.make(parser, c, clientPublicKey, 1, completeMsg)
+            clientSocket.send(completeMsg)
+          else:
+            message = messageParser.make(parser, c, clientPublicKey, 1, "signed up")
+            clientSocket.send(message)
 
         elif(command == "2"):
           print("\nsomething else")
