@@ -61,7 +61,7 @@ while True:
     password = getpass.getpass("Password: ")
     password2 = getpass.getpass("Re-enter Password: ")
     dataA = userName + "," + password + "," + password2 + ","
-    completeMsg = messageParser.make(parser, cr, serverPublicKey, 1, dataA)
+    completeMsg = messageParser.make(parser, cr, serverPublicKey, 2, dataA)
     clientSocket.send(completeMsg)
 
   response = clientSocket.recv(1024)
