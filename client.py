@@ -60,7 +60,9 @@ while True:
     userName = raw_input()
     password = getpass.getpass("Password: ")
     password2 = getpass.getpass("Re-enter Password: ")
-    dataA = userName + "," + password + "," + password2 + ","
+    print("Please enter a random word, you will not be asked for this in the future.")
+    secret = raw_input()
+    dataA = userName + "," + password + "," + password2 + "," + secret + ","
     completeMsg = messageParser.make(parser, cr, serverPublicKey, 2, dataA)
     clientSocket.send(completeMsg)
 

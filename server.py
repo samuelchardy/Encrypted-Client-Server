@@ -1,4 +1,4 @@
-import socket, threading
+import socket, threading, json, hashlib
 from password_strength import PasswordStats
 from password_strength import PasswordPolicy
 from Crypto2           import crypto
@@ -49,8 +49,9 @@ class Server():
             username = splitData[0]
             password = splitData[1]
             password2 = splitData[2]
+            secret = splitData[3]
 
-            listOfErrors = policy.test(password)
+            listOfErrors = self.policy.test(password)
             if(password != password2):
               errorActive = 1
               completeMsg = "Error: Passwords do not match, please try again!\n"
@@ -69,6 +70,14 @@ class Server():
             else:
               message = messageParser.make(parser, c, clientPublicKey, 1, "signed up")
               self.clientsocket.send(message)
+              #SAVE USER DETAILS TO FILE - temporary as we're going to use a SQL database
+              m = hashlib.md5()
+              m.update(password)
+              passwordMD5 = m.hexdigest()
+              userData = [username, passwordMD5, secret]
+              with open('users.json','a') as saveFile:
+                json.dump(userData, saveFile)
+                saveFile.write('\n')
 
           elif(command == "2"):
             print("\nsomething else")
