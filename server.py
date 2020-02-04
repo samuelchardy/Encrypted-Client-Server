@@ -3,24 +3,59 @@ from password_strength import PasswordStats
 from password_strength import PasswordPolicy
 from Crypto2           import crypto
 from messageParser     import messageParser
+from Verify             import Verify
 
+import smtplib, ssl, pyotp
+from email.mime.multipart import MIMEMultipart
+from email.mime.text  import MIMEText
 
 class Server():
-
+  
   class ServerThread(threading.Thread):
 
-    def __init__(self,clientAddress,clientsocket):
+    def __init__(self,clientAddress,clientsocket,server):
       self.c=crypto()
-      self.parser=messageParser()
+      self.OTP=Verify()
       crypto.genKeys(self.c)
       crypto.storeKeys(self.c)
-    
+      self.server=server
       self.publicKey = crypto.loadPublicKey(self.c)
       threading.Thread.__init__(self)
       self.clientsocket = clientsocket
       self.clientAddress=clientAddress
       print ("New connection added: ", clientAddress)
-    def authenticate(self):
+    def sendOTP(self,email="st7ma784@gmail.com"):
+      current_code = self.OTP.get()
+      
+      #Generate email
+      message = MIMEMultipart()
+      message["Subject"] = "Your Verification Code"
+      message["From"] = self.server.emailAddr
+      message["To"] = email
+
+      text = "Your verification code is : " + str(current_code)
+      
+      msgText = MIMEText(text, "plain")
+      message.attach(msgText)
+      
+      #Connect to SMTP server and send email
+      context = ssl.create_default_context()
+      print(text)
+      
+      
+      try:
+        s=smtplib.SMTP(host='smtp.gmail.com', port = 587)
+        s.starttls(context = context)
+        s.login(self.server.emailAddr, self.server.pw)
+        s.sendmail(self.server.emailAddr, email, message.as_string())
+        print("email sent to : " + email)
+      except Exception as e:#https://docs.google.com/document/d/1ccYoBdUBAxtwKJIUg5GfgUYkHVz3ZcLgdhttps://docs.google.com/document/d/1ccYoBdUBAxtwKJIUg5GfgUYkHVz3ZcLgd73bXU3QRFM/edit?usp=sharing73bXU3QRFM/edit?usp=sharing
+        print(e)
+      finally:
+        s.quit()
+      
+    
+    def authenticate(self,clientPublicKey):
       loggedin=False
       attempts=3 ####### this can be updates later. 
       while not loggedin:
@@ -30,16 +65,37 @@ class Server():
           #DECRYPT DATA
           msg = crypto.decryptData(self.c, msg)
           #PARSE MESSAGE INTO ITS COMPONENTS
-          command, dataLen, data, checksum = messageParser.parse(self.parser, msg)
+          command, dataLen, data, checksum = messageParser.parse(self.server.parser, msg)
           print("COMMAND: " + str(command) + "\nDATA LEN: " + str(dataLen) + "\nDATA: " + str(data) + "\nCHECKSUM: " + checksum)
 
         if(int(dataLen) < 255):
           if(command == "1"):
-            print("\ntrying to log in")
-            loggedin=True
-
+            
+            #harvest input user
+            #harvest
+            splitData = str.split(data,",")
+            username = splitData[0]
+            password = splitData[1]
+            print("username: " + username)
+            print("password: " + password)
 
             #check against sql server for user/passowrd store
+              #if fails, repeat login loop   
+            
+            print("\ntrying to log in")
+            #SEND MESSAGE TELLING THEM TO ENTER OTP CODE
+            otpMsg = messageParser.make(self.server.parser, self.c, clientPublicKey, 1, "Please check your email and enter the code we have sent you!")
+            self.clientsocket.send(otpMsg)
+            
+            self.sendOTP() # not declared in memory so cant be listened for. 
+            print("sent OTP")
+            #RECIEVE OTP CODE
+            otpCode = self.clientsocket.recv(1024)
+            otpCode = crypto.decryptData(self.c, otpCode)
+            command, dataLen, otpCode, checksum = messageParser.parse(self.server.parser, otpCode)
+            print(self.OTP.checkCode(otpCode))
+
+            loggedin=True
           elif(command == "2"):
             #user is signing up here
             errorActive = 0
@@ -51,7 +107,7 @@ class Server():
             password2 = splitData[2]
             secret = splitData[3]
 
-            listOfErrors = self.policy.test(password)
+            listOfErrors = self.server.policy.test(password)
             if(password != password2):
               errorActive = 1
               completeMsg = "Error: Passwords do not match, please try again!\n"
@@ -65,10 +121,10 @@ class Server():
               completeMsg = completeMsg + errorMsg
 
             if(errorActive == 1):
-              completeMsg = messageParser.make(parser, c, clientPublicKey, 1, completeMsg)
+              completeMsg = messageParser.make(self.server.parser, self.c, clientPublicKey, 1, completeMsg)
               self.clientsocket.send(completeMsg)
             else:
-              message = messageParser.make(parser, c, clientPublicKey, 1, "signed up")
+              message = messageParser.make(self.server.parser, self.c, clientPublicKey, 1, "signed up")
               self.clientsocket.send(message)
               #SAVE USER DETAILS TO FILE - temporary as we're going to use a SQL database
               m = hashlib.md5()
@@ -98,7 +154,7 @@ class Server():
       clientPublicKey =  self.clientsocket.recv(1024)
       print("client public\n" + clientPublicKey)
       clientPublicKey = crypto.loadPublicKeyFromBytes(self.c, clientPublicKey) #<---
-      self.authenticate()
+      self.authenticate(clientPublicKey)
       #ACCESS TO MAIN FUNCTIONALITY IF YOU HAVE THE RGHT ROLE
             
 
@@ -108,10 +164,11 @@ class Server():
     self.host = socket.gethostname()
     self.port = port
     self.serverSocket.bind((self.host, self.port))
-
+    self.parser=messageParser()
     self.serverSocket.listen(5)
     print("Server Active")
-    
+    self.emailAddr='363hospitalmfaservice@gmail.com'
+    self.pw='Insecure'
     
     
 
@@ -133,7 +190,7 @@ class Server():
     while True:
       self.serverSocket.listen(1)
       clientsock, clientAddress = self.serverSocket.accept()
-      newthread = self.ServerThread(clientAddress, clientsock)
+      newthread = self.ServerThread(clientAddress, clientsock,self)
       newthread.start()
       #print("Connected to: " + str(clientAddress))
 myserver=Server()
