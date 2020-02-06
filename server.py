@@ -1,10 +1,10 @@
 import socket, threading, json, hashlib
-from password_strength import PasswordStats
-from password_strength import PasswordPolicy
 from Crypto2           import crypto
 from messageParser     import messageParser
-from Verify             import Verify
+from Verify            import Verify
 import mysql.connector
+from password_strength import PasswordStats
+from password_strength import PasswordPolicy
 
 import smtplib, ssl, pyotp
 from email.mime.multipart import MIMEMultipart
@@ -104,42 +104,33 @@ class Server():
               print(logCode)
               logRes = messageParser.make(self.server.parser, self.c, clientPublicKey, logCode, logResult)
               self.clientsocket.send(logRes)
-			  
+            else:
+              failMsg = messageParser.make(self.server.parser, self.c, clientPublicKey, "0", "Incorrect username or password!")
+              self.clientsocket.send(failMsg)
+			 
           elif(command == "B"):
             #user is signing up here
             errorActive = 0
             completeMsg = ""
             print("\ntrying to sign up")
-            splitData = str.split(data,",")
-            username = splitData[0]
-            password = splitData[1]
-            password2 = splitData[2]
-            secret = splitData[3]
+            splitData = str.split(data.decode("ASCII"),",")
+            forename = splitData[0]
+            surname = splitData[1]
+            dob = splitData[2]
+            username = splitData[3]
+            password = splitData[4]
+            password2 = splitData[5]
+            secret = splitData[6]
 
-            listOfErrors = self.server.policy.test(password)
+
             if(password != password2):
-              errorActive = 1
-              completeMsg = "Error: Passwords do not match, please try again!\n"
-
-            if(len(listOfErrors) > 0):
-              errorActive = 1
-              errorMsg = "Error: Your password must contain the following: "
-              for error in listOfErrors:
-                errorMsg += str(error) + " " 
-              print(errorMsg)
-              completeMsg = completeMsg + errorMsg
-
-            if(errorActive == 1):
-              completeMsg = messageParser.make(self.server.parser, self.c, clientPublicKey, "0", completeMsg)
+              completeMsg = messageParser.make(self.server.parser, self.c, clientPublicKey, "0", "Passwords don't match, please try again!")
               self.clientsocket.send(completeMsg)
             else:
               message = messageParser.make(self.server.parser, self.c, clientPublicKey, "1", "signed up")
               self.clientsocket.send(message)
               #SAVE USER DETAILS TO FILE - temporary as we're going to use a SQL database
-              m = hashlib.md5()
-              m.update(password)
-              passwordMD5 = m.hexdigest()
-              userData = [username, passwordMD5, secret]
+              userData = [username, password, secret]
               with open('users.json','a') as saveFile:
                 json.dump(userData, saveFile)
                 saveFile.write('\n')
@@ -218,10 +209,10 @@ class Server():
 
   #PASSWORD POLICY
     self.policy = PasswordPolicy.from_names(
-      length=8,  		# min length: 8
-      uppercase=2,  	# need min. 2 uppercase letters
+      length=24,  		# min length: 8
+      uppercase=0,  	# need min. 2 uppercase letters
       numbers=2,  	# need min. 2 digits
-      special=1,  	# need min. 1 special characters
+      special=0,  	# need min. 1 special characters
       nonletters=0  	# need min. 0 non-letter characters (digits, specials, anything)
   )
 

@@ -1,6 +1,8 @@
 import socket, hashlib, time, os, getpass
-from Crypto2       import crypto
-from messageParser import messageParser
+from Crypto2           import crypto
+from messageParser     import messageParser
+from password_strength import PasswordStats
+from password_strength import PasswordPolicy
 
 #INITIALISE ENCRYPTION OBJECT/ KEYS
 cr = crypto()
@@ -50,25 +52,26 @@ while True:
         otpResponse = clientSocket.recv(1024)
         otpResponse = crypto.decryptData(cr, otpResponse)
         command, dataLen, otpData, checksum = messageParser.parse(parser, otpResponse)
-        print(otpData)
+        print(otpData.decode("UTF-8"))
+        
+        if(command == "1"):
+          enteredCode = input()
+          otpReply = messageParser.make(parser, cr, serverPublicKey, "A", enteredCode)
+          clientSocket.send(otpReply)
 		
-        enteredCode = input()
-        otpReply = messageParser.make(parser, cr, serverPublicKey, "A", enteredCode)
-        clientSocket.send(otpReply)
-		
-        newResponse = clientSocket.recv(1024)
-        newResponse = crypto.decryptData(cr, newResponse)
-        newCommand, dataLen, data, checksum = messageParser.parse(parser, newResponse)
-        print(data.decode("ASCII"))
+          newResponse = clientSocket.recv(1024)
+          newResponse = crypto.decryptData(cr, newResponse)
+          newCommand, dataLen, data, checksum = messageParser.parse(parser, newResponse)
+          print(data.decode("ASCII"))
 
-        if(newCommand == "1"):
-          while True:
-			#Only print what the user is able to do...
-            print("OPTIONS...")
-            enteredCode = input()
-            userChoice = messageParser.make(parser, cr, serverPublicKey, "A", enteredCode)
-            clientSocket.send(userChoice)
-			
+          if(newCommand == "1"):
+            while True:
+		  	#Only print what the user is able to do...
+              print("OPTIONS...")
+              enteredCode = input()
+              userChoice = messageParser.make(parser, cr, serverPublicKey, "A", enteredCode)
+              clientSocket.send(userChoice)
+		
 
       else:
         print("Error: Don't put commas in the password!")
@@ -80,27 +83,62 @@ while True:
   elif(choice == "2"):
     #SIGN UP - (1, data length, "username,password,password2,", checksum)
     os.system('clear')
+    print("Forename: ")
+    forename = input()
+    print("Surname: ")
+    surname = input()
+    print("Date of Birth (yyyy/mm/dd): ")
+    dob = input()
     print("Username: ")
     userName = input()
-    password = getpass.getpass("Password: ")
-    password2 = getpass.getpass("Re-enter Password: ")
+    password=""
+    password2=""
+    policy = PasswordPolicy.from_names(
+      length=8,  		# min length: 8
+      uppercase=2,  	# need min. 2 uppercase letters
+      numbers=2,  	# need min. 2 digits
+      special=1,  	# need min. 1 special characters
+      nonletters=0  	# need min. 0 non-letter characters (digits, specials, anything)
+    )
+    validpassword=False
+    while not validpassword:	 
+      password = getpass.getpass("Password: ")
+      password2 = getpass.getpass("Re-enter Password: ")
+      listOfErrors = policy.test(password)
+
+      if(len(listOfErrors) > 0):
+        errorActive = 1
+        errorMsg = "Error: Your password must contain the following: "
+        for error in listOfErrors:
+          errorMsg += str(error) + " " 
+        print(errorMsg)
+      else:
+        validpassword=True
+	
     print("Please enter a random word, you will not be asked for this in the future.")
     secret = input()
     m = hashlib.md5()
-    m.update(password)
+    m.update(password.encode("UTF-8"))
     password1MD5 = m.hexdigest()
+	
     m = hashlib.md5()
-    m.update(password2)
+    m.update(password2.encode("UTF-8"))
     password2MD5 = m.hexdigest()
-    dataA = userName + "," + password1MD5 + "," + password2MD5 + "," + secret + ","
+    
+    dataA = forename + "," + surname + "," + dob + "," + userName + "," + password1MD5 + "," + password2MD5 + "," + secret + ","
     completeMsg = messageParser.make(parser, cr, serverPublicKey,"B", dataA)
     clientSocket.send(completeMsg)
 
-  response = clientSocket.recv(1024)
-  response = crypto.decryptData(cr, response)
-  command, dataLen, data, checksum = messageParser.parse(parser, response)
-  print(data)
-  time.sleep(5)
+    response = clientSocket.recv(1024)
+    response = crypto.decryptData(cr, response)
+    command, dataLen, data, checksum = messageParser.parse(parser, response)
+    print(data.decode("UTF-8"))
+    time.sleep(3.5)
 
 clientSocket.close()
 #print (decryptedMsg)
+
+
+'''
+
+'''
