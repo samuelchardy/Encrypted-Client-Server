@@ -26,7 +26,7 @@ class Server():
       self.clientAddress=clientAddress
       print ("New connection added: ", clientAddress)
 	  
-    def sendOTP(self,email="st7ma784@gmail.com"):
+    def sendOTP(self,email="sampanda91@gmail.com"):
       current_code = self.OTP.get()
       
       #Generate email
@@ -71,34 +71,41 @@ class Server():
           print("COMMAND: " + str(command) + "\nDATA LEN: " + str(dataLen) + "\nDATA: " + str(data) + "\nCHECKSUM: " + str(checksum))
 
         if(int(dataLen) < 255):
-          if(command == "1"):
+          if(command == "A"):
             
             #harvest input user
             #harvest
             splitData = str.split(data.decode("ASCII"),",")
             username = splitData[0]
             password = splitData[1]
+			#checkvalidation by ensuring password is  n number of alphanum set. 
             print("username: " + username)
             print("password: " + password)
-            loggedin=self.LoginChecker(username,password)
-            #check against sql server for user/passowrd store
-              #if fails, repeat login loop   
-            
-            print("\ntrying to log in")
-            #SEND MESSAGE TELLING THEM TO ENTER OTP CODE
-            otpMsg = messageParser.make(self.server.parser, self.c, clientPublicKey, 1, "Please check your email and enter the code we have sent you!")
-            self.clientsocket.send(otpMsg)
-            
-            self.sendOTP() # not declared in memory so cant be listened for. 
-            print("sent OTP")
-            #RECIEVE OTP CODE
-            otpCode = self.clientsocket.recv(1024)
-            otpCode = crypto.decryptData(self.c, otpCode)
-            command, dataLen, otpCode, checksum = messageParser.parse(self.server.parser, otpCode)
-            print(self.OTP.checkCode(otpCode))
-
-            loggedin=True
-          elif(command == "2"):
+            if(self.LoginChecker(username,password)):#check against sql server for user/passowrd store#if fails, repeat login loo
+              print("\ntrying to log in")#SEND MESSAGE TELLING THEM TO ENTER OTP CODE
+              otpMsg = messageParser.make(self.server.parser, self.c, clientPublicKey, "1", "Please check your email and enter the code we have sent you!")
+              self.clientsocket.send(otpMsg)
+              self.sendOTP() # not declared in memory so cant be listened for. 
+              print("sent OTP")
+			  #RECIEVE OTP CODE
+              otpCode = self.clientsocket.recv(1024)
+              otpCode = crypto.decryptData(self.c, otpCode)
+              command, dataLen, otpCode, checksum = messageParser.parse(self.server.parser, otpCode)
+              print(otpCode.decode("ASCII"))
+              otpCode = otpCode.decode("ASCII")[:-1]
+              print(self.OTP.checkCode(otpCode))
+			  
+              loggedin=True
+              logResult = "Welcome!"
+              logCode = "1"
+              if(not self.OTP.checkCode(otpCode)):
+                logResult = "Incorrect code, please try again!"
+                logCode = "0"
+              print(logCode)
+              logRes = messageParser.make(self.server.parser, self.c, clientPublicKey, logCode, logResult)
+              self.clientsocket.send(logRes)
+			  
+          elif(command == "B"):
             #user is signing up here
             errorActive = 0
             completeMsg = ""
@@ -123,10 +130,10 @@ class Server():
               completeMsg = completeMsg + errorMsg
 
             if(errorActive == 1):
-              completeMsg = messageParser.make(self.server.parser, self.c, clientPublicKey, 1, completeMsg)
+              completeMsg = messageParser.make(self.server.parser, self.c, clientPublicKey, "0", completeMsg)
               self.clientsocket.send(completeMsg)
             else:
-              message = messageParser.make(self.server.parser, self.c, clientPublicKey, 1, "signed up")
+              message = messageParser.make(self.server.parser, self.c, clientPublicKey, "1", "signed up")
               self.clientsocket.send(message)
               #SAVE USER DETAILS TO FILE - temporary as we're going to use a SQL database
               m = hashlib.md5()
@@ -150,24 +157,26 @@ class Server():
     
     def LoginChecker(self,username, password):
       #connect to db
-      with self.server.DB() as d:
-        c = d.cursor()
+      d=self.server.DB()
+      c = d.cursor()
         #gets salted password  and salt if user is in db 
-        c.execute("select saltypassword from login where username = '"+username+"'")
-        res=c.fetchall()
-        pword=res[0][0]
-        c.execute("select secretanswer from login where username = '"+username+"'")
-        res=c.fetchall()
-        salt=res[0][0]
+      c.execute("select saltypassword from login where username = '"+username+"'")
+      res=c.fetchall()
+      pword=res[0][0]
+      c.execute("select secretanswer from login where username = '"+username+"'")
+      res=c.fetchall()
+      salt=res[0][0]
         #adds salt to attempted password
-        saltedAttempt = password + salt
+      saltedAttempt = password + salt
         #compares
-        if saltedAttempt == pword:
-          print("Login Successful")
-          return True
-        else:
-          print("#fail") 
-        return False
+      if saltedAttempt == pword:
+        print("Login Successful")
+        d.close()
+        return True
+      else:
+        d.close()
+        print("#fail") 
+      return False
     
     def run(self):
       print ("Connection from : "+ str(self.clientAddress))

@@ -91,6 +91,42 @@ def appendStaffInfoBySID(sid, key, value)
 #if staff has the same ward as current staffID (managers only)
 #update field with value at key point
 
+#Staff data methods
+def addStaffByUsername(username,mc)
+mc.execute("INSERT INTO staff(username) VALUES ('"+uName+"')")
+
+def getStaffInfoByUsername(username, mc)
+    #finds and returns the information related to the staff with Username
+    mc.execute("SELECT * FROM staff INNER JOIN hours ON hours.staffid = staff.staffid where staff.username = '"+username+"'")
+    results = mc.fetchall()
+    for res in results:
+      print(res)
+
+def appendStaffInfoByUsername(username, mc, c, key, value)
+#if staff has the same ward as current staffID (managers only)
+#update field with value at key point
+	if  isinstance(key, str):
+	  key= key.lower()
+
+	  if key == "ward": 
+		  
+		mc.execute("UPDATE staff SET ward = %s WHERE username = %s", (value, username))
+	  elif key == "boss":
+	  
+		mc.execute("UPDATE staff SET LineManager = %s WHERE username = %s", (value, username))
+	  elif key =="hours":
+		mc.execute("select * from staff where username = '"+username+"'")
+		res = mc.fetchall()
+		staffID=res[0][0]
+		mc.execute("SELECT * FROM hours where staffID = '"+str(staffID)+"'")
+		
+		res = mc.fetchall()
+		if  mc.rowcount >0:
+		  mc.execute("UPDATE hours SET hours = %s WHERE staffid = %s", (value, staffID))
+		else:        
+		  mc.execute("insert into hours(staffid,hours) VALUES (%s,%s)", (staffID,value))
+	  c.commit()
+
 def writeToStaffInfo(sid)
 #if staff has the same ward as current staffID (managers only) 
 #send request for staff data to write 

@@ -41,7 +41,7 @@ while True:
     m.update(password.encode("ASCII"))
     passwordMD5 = m.hexdigest()
     data = userName + "," + passwordMD5 + ","
-    completeMsg = messageParser.make(parser, cr, serverPublicKey, int(choice), data)
+    completeMsg = messageParser.make(parser, cr, serverPublicKey, "A", data)
 
     if(messageParser.checkData(parser, userName)):
       if(messageParser.checkData(parser, password)):
@@ -51,13 +51,24 @@ while True:
         otpResponse = crypto.decryptData(cr, otpResponse)
         command, dataLen, otpData, checksum = messageParser.parse(parser, otpResponse)
         print(otpData)
+		
         enteredCode = input()
-        otpReply = messageParser.make(parser, cr, serverPublicKey, 1, enteredCode)
+        otpReply = messageParser.make(parser, cr, serverPublicKey, "A", enteredCode)
         clientSocket.send(otpReply)
+		
+        newResponse = clientSocket.recv(1024)
+        newResponse = crypto.decryptData(cr, newResponse)
+        newCommand, dataLen, data, checksum = messageParser.parse(parser, newResponse)
+        print(data.decode("ASCII"))
 
-        #LOGGED IN
-        #while True:
-
+        if(newCommand == "1"):
+          while True:
+			#Only print what the user is able to do...
+            print("OPTIONS...")
+            enteredCode = input()
+            userChoice = messageParser.make(parser, cr, serverPublicKey, "A", enteredCode)
+            clientSocket.send(userChoice)
+			
 
       else:
         print("Error: Don't put commas in the password!")
@@ -82,7 +93,7 @@ while True:
     m.update(password2)
     password2MD5 = m.hexdigest()
     dataA = userName + "," + password1MD5 + "," + password2MD5 + "," + secret + ","
-    completeMsg = messageParser.make(parser, cr, serverPublicKey, 2, dataA)
+    completeMsg = messageParser.make(parser, cr, serverPublicKey,"B", dataA)
     clientSocket.send(completeMsg)
 
   response = clientSocket.recv(1024)
