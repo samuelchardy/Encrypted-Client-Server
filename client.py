@@ -29,19 +29,19 @@ clientSocket.send(publicKey)
 while True:
   os.system('clear')
   print("------------------------\n1: Log in\n2: Sign up\n------------------------\n")
-  choice = raw_input()
+  choice = input()
 
   if(choice == "1"):
     #LOG IN - (0, data length, "username,password,", checksum)
     os.system('clear')
     print("Username: ")
-    userName = raw_input()
+    userName = input()
     password = getpass.getpass("Password: ")
     m = hashlib.md5()
-    m.update(password)
+    m.update(password.encode("ASCII"))
     passwordMD5 = m.hexdigest()
     data = userName + "," + passwordMD5 + ","
-    completeMsg = messageParser.make(parser, cr, serverPublicKey, 1, data)
+    completeMsg = messageParser.make(parser, cr, serverPublicKey, int(choice), data)
 
     if(messageParser.checkData(parser, userName)):
       if(messageParser.checkData(parser, password)):
@@ -51,7 +51,7 @@ while True:
         otpResponse = crypto.decryptData(cr, otpResponse)
         command, dataLen, otpData, checksum = messageParser.parse(parser, otpResponse)
         print(otpData)
-        enteredCode = raw_input()
+        enteredCode = input()
         otpReply = messageParser.make(parser, cr, serverPublicKey, 1, enteredCode)
         clientSocket.send(otpReply)
 
@@ -66,11 +66,11 @@ while True:
     #SIGN UP - (1, data length, "username,password,password2,", checksum)
     os.system('clear')
     print("Username: ")
-    userName = raw_input()
+    userName = input()
     password = getpass.getpass("Password: ")
     password2 = getpass.getpass("Re-enter Password: ")
     print("Please enter a random word, you will not be asked for this in the future.")
-    secret = raw_input()
+    secret = input()
     m = hashlib.md5()
     m.update(password)
     password1MD5 = m.hexdigest()

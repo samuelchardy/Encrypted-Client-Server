@@ -24,6 +24,7 @@ class Server():
       self.clientsocket = clientsocket
       self.clientAddress=clientAddress
       print ("New connection added: ", clientAddress)
+	  
     def sendOTP(self,email="st7ma784@gmail.com"):
       current_code = self.OTP.get()
       
@@ -66,14 +67,14 @@ class Server():
           msg = crypto.decryptData(self.c, msg)
           #PARSE MESSAGE INTO ITS COMPONENTS
           command, dataLen, data, checksum = messageParser.parse(self.server.parser, msg)
-          print("COMMAND: " + str(command) + "\nDATA LEN: " + str(dataLen) + "\nDATA: " + str(data) + "\nCHECKSUM: " + checksum)
+          print("COMMAND: " + str(command) + "\nDATA LEN: " + str(dataLen) + "\nDATA: " + str(data) + "\nCHECKSUM: " + str(checksum))
 
         if(int(dataLen) < 255):
           if(command == "1"):
             
             #harvest input user
             #harvest
-            splitData = str.split(data,",")
+            splitData = str.split(data.decode("ASCII"),",")
             username = splitData[0]
             password = splitData[1]
             print("username: " + username)
@@ -145,14 +146,14 @@ class Server():
       #here we're logged in after this loop so well
     def run(self):
       print ("Connection from : "+ str(self.clientAddress))
-      #self.csocket.send(bytes("Hi, This is from Server..",'utf-8'))
+      #self.csocket.send(bytes("Hi, This is from Server..",'ASCII'))
       msg = ''
       #
       self.clientsocket.send(self.publicKey)
 
           #GETTING CLIENTS PUBLIC KEY
       clientPublicKey =  self.clientsocket.recv(1024)
-      print("client public\n" + clientPublicKey)
+      print("client public\n" + str(clientPublicKey))
       clientPublicKey = crypto.loadPublicKeyFromBytes(self.c, clientPublicKey) #<---
       self.authenticate(clientPublicKey)
       #ACCESS TO MAIN FUNCTIONALITY IF YOU HAVE THE RGHT ROLE
@@ -168,7 +169,7 @@ class Server():
     self.serverSocket.listen(5)
     print("Server Active")
     self.emailAddr='363hospitalmfaservice@gmail.com'
-    self.pw='Insecure'
+    self.pw='InsecurePassword'
     
     
 

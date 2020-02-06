@@ -93,7 +93,7 @@ class crypto:
 
 
   def encryptData(self, data, key):
-    message = bytes(data)
+    message = bytes(data.encode("UTF-8"))
     cipherText = key.encrypt(
       message,
       padding.OAEP(
