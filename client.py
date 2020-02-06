@@ -55,6 +55,10 @@ while True:
         otpReply = messageParser.make(parser, cr, serverPublicKey, 1, enteredCode)
         clientSocket.send(otpReply)
 
+        #LOGGED IN
+        #while True:
+
+
       else:
         print("Error: Don't put commas in the password!")
         time.sleep(3.5)

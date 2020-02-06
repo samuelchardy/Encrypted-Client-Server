@@ -4,6 +4,7 @@ from password_strength import PasswordPolicy
 from Crypto2           import crypto
 from messageParser     import messageParser
 from Verify             import Verify
+import mysql.connector
 
 import smtplib, ssl, pyotp
 from email.mime.multipart import MIMEMultipart
@@ -79,7 +80,7 @@ class Server():
             password = splitData[1]
             print("username: " + username)
             print("password: " + password)
-
+            loggedin=self.LoginChecker(username,password)
             #check against sql server for user/passowrd store
               #if fails, repeat login loop   
             
@@ -144,6 +145,30 @@ class Server():
           #time.sleep(60)
           attempts+=1
       #here we're logged in after this loop so well
+      #go to give options for authentication. 
+    
+    
+    def LoginChecker(self,username, password):
+      #connect to db
+      with self.server.DB() as d:
+        c = d.cursor()
+        #gets salted password  and salt if user is in db 
+        c.execute("select saltypassword from login where username = '"+username+"'")
+        res=c.fetchall()
+        pword=res[0][0]
+        c.execute("select secretanswer from login where username = '"+username+"'")
+        res=c.fetchall()
+        salt=res[0][0]
+        #adds salt to attempted password
+        saltedAttempt = password + salt
+        #compares
+        if saltedAttempt == pword:
+          print("Login Successful")
+          return True
+        else:
+          print("#fail") 
+        return False
+    
     def run(self):
       print ("Connection from : "+ str(self.clientAddress))
       #self.csocket.send(bytes("Hi, This is from Server..",'ASCII'))
@@ -158,7 +183,13 @@ class Server():
       self.authenticate(clientPublicKey)
       #ACCESS TO MAIN FUNCTIONALITY IF YOU HAVE THE RGHT ROLE
             
-
+  def connectDB(self):
+    conn = mysql.connector.connect(user="threesixthreedb", 
+                                password="Jd19_m_20k02",
+                                host="den1.mysql6.gear.host",
+                                database="threesixthreedb")
+    return conn
+ 
   def __init__(self,port=9999):
     self.serverSocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     self.serverSocket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
@@ -172,7 +203,7 @@ class Server():
     self.pw='InsecurePassword'
     
     
-
+    self.DB=self.connectDB
   #INITIALISE MESSAGEPARSER
     self.parser = messageParser()
 
@@ -186,7 +217,8 @@ class Server():
   )
 
 
-
+  
+  
   def run(self):
     while True:
       self.serverSocket.listen(1)
