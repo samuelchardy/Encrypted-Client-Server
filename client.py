@@ -148,9 +148,3 @@ while True:
       time.sleep(1)
 
 clientSocket.close()
-#print (decryptedMsg)
-
-
-'''
-
-'''

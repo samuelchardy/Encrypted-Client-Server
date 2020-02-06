@@ -1,14 +1,12 @@
-import socket, threading, json, hashlib
-from Crypto2           import crypto
-from messageParser     import messageParser
-from Verify            import Verify
-import mysql.connector
-from password_strength import PasswordStats
-from password_strength import PasswordPolicy
-
-import smtplib, ssl, pyotp
-from email.mime.multipart import MIMEMultipart
-from email.mime.text  import MIMEText
+import socket, threading, json, hashlib, smtplib, ssl, pyotp, mysql.connector
+from Crypto2           		import crypto
+from messageParser     		import messageParser
+from Verify            		import Verify
+from password_strength 		import PasswordStats
+from password_strength 		import PasswordPolicy
+from email.mime.multipart 	import MIMEMultipart
+from email.mime.text  		import MIMEText
+from datetime 				import datetime
 
 class Server():
   
@@ -87,7 +85,7 @@ class Server():
               self.clientsocket.send(otpMsg)
               self.sendOTP() # not declared in memory so cant be listened for. 
               print("sent OTP")
-			  #RECIEVE OTP CODE
+			        #RECIEVE OTP CODE
               otpCode = self.clientsocket.recv(1024)
               otpCode = crypto.decryptData(self.c, otpCode)
               command, dataLen, otpCode, checksum = messageParser.parse(self.server.parser, otpCode)
@@ -128,13 +126,9 @@ class Server():
               self.clientsocket.send(completeMsg)
             else:
               message = messageParser.make(self.server.parser, self.c, clientPublicKey, "1", "signed up")
+              self.signUp(username, password, secret, dob, surname, forename)
               self.clientsocket.send(message)
-              #SAVE USER DETAILS TO FILE - temporary as we're going to use a SQL database
-              userData = [username, password, secret]
-              with open('users.json','a') as saveFile:
-                json.dump(userData, saveFile)
-                saveFile.write('\n')
-
+      
           elif(command == "2"):
             print("\nsomething else")
         else:
@@ -168,6 +162,22 @@ class Server():
         d.close()
         print("#fail") 
       return False
+	  
+    def signUp(self, username, password, secret, dob, surname, forename):
+      dt=datetime.now()
+      validTime=dt.strftime("%Y-%m-%d %H:%M:%S")
+      password += secret
+      c= self.server.DB()
+      mc = c.cursor()
+      mc.execute("INSERT INTO login VALUES(%s,%s,%s,%s)",(username,password,secret,validTime))
+      mc.execute("INSERT INTO personalinfo(Username,Email,Surname,Forename,DOB) VALUES(%s,%s,%s,%s,%s)",(username,username,surname,forename,dob))
+      mc.execute("SELECT UserID from personalinfo where Username = '"+username+"'")
+      results = mc.fetchall()
+      userID = results[0][0] 
+      mc.execute("INSERT INTO roles(UserID,RoleID) Values(%s,%s)",(userID,0))
+      c.commit()
+      c.close()	  
+	
     
     def run(self):
       print ("Connection from : "+ str(self.clientAddress))
@@ -228,98 +238,3 @@ class Server():
       #print("Connected to: " + str(clientAddress))
 myserver=Server()
 myserver.run()
-      ################################################################################################################################################
-
-#       \*
-# #INITIALISE ENCRYPTION OBJECT/ KEYS
-# c = crypto()
-# crypto.genKeys(c)
-# crypto.storeKeys(c)
-# publicKey = crypto.loadPublicKey(c)
-
-# #INITIALISE MESSAGEPARSER
-# parser = messageParser()
-
-# #PASSWORD POLICY
-# policy = PasswordPolicy.from_names(
-#     length=8,  		# min length: 8
-#     uppercase=2,  	# need min. 2 uppercase letters
-#     numbers=2,  	# need min. 2 digits
-#     special=1,  	# need min. 1 special characters
-#     nonletters=0  	# need min. 0 non-letter characters (digits, specials, anything)
-# )
-
-
-# #SETUP SERVER
-# host = socket.gethostname()
-# port = 9999
-# serverSocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-# serverSocket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-# serverSocket.bind((host, port))
-# serverSocket.listen(1)
-
-# print("Server Active\n\n" + str(publicKey) + "\n")
-
-# while True:
-#   #SENDING SERVERS PUBLIC KEY
-#   clientSocket, addr = serverSocket.accept()
-#   print("Connected to: %s" % str(addr))
-#   clientSocket.send(publicKey)
-
-#   #GETTING CLIENTS PUBLIC KEY
-#   clientPublicKey = clientSocket.recv(1024)
-#   print("client public\n" + clientPublicKey)
-#   clientPublicKey = crypto.loadPublicKeyFromBytes(c, clientPublicKey) #<---
-
-#   #GETTING MESSAGE, DECRYPT IT, PRINT 
-#   while True:
-#     msg = clientSocket.recv(1024)
-#     if(len(msg) == 294):
-#       #DECRYPT DATA
-#       msg = crypto.decryptData(c, msg)
-#       #PARSE MESSAGE INTO ITS COMPONENTS
-#       command, dataLen, data, checksum = messageParser.parse(parser, msg)
-#       print("COMMAND: " + str(command) + "\nDATA LEN: " + str(dataLen) + "\nDATA: " + str(data) + "\nCHECKSUM: " + checksum)
-
-#       if(int(dataLen) < 255):
-#         if(command == "0"):
-#           print("\ntrying to log in")
-
-
-          
-#         elif(command == "1"):
-#           errorActive = 0
-#           completeMsg = ""
-#           print("\ntrying to sign up")
-#           splitData = str.split(data,",")
-#           username = splitData[0]
-#           password = splitData[1]
-#           password2 = splitData[2]
-
-#           listOfErrors = policy.test(password)
-#           if(password != password2):
-#             errorActive = 1
-#             completeMsg = "Error: Passwords do not match, please try again!\n"
-
-#           if(len(listOfErrors) > 0):
-#             errorActive = 1
-#             errorMsg = "Error: Your password must contain the following: "
-#             for error in listOfErrors:
-#               errorMsg += str(error) + " " 
-#             print(errorMsg)
-#             completeMsg = completeMsg + errorMsg
-
-#           if(errorActive == 1):
-#             completeMsg = messageParser.make(parser, c, clientPublicKey, 1, completeMsg)
-#             clientSocket.send(completeMsg)
-#           else:
-#             message = messageParser.make(parser, c, clientPublicKey, 1, "signed up")
-#             clientSocket.send(message)
-
-#         elif(command == "2"):
-#           print("\nsomething else")
-#       else:
-#         print("Error: Data length value is too large.")
-
-
-#   clientSocket.close()
