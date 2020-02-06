@@ -28,14 +28,16 @@ serverPublicKey = crypto.loadPublicKeyFromBytes(cr, serverPublicKey)
 clientSocket.send(publicKey)
 
 #USER INTERFACE
+attempts = 0
+
 while True:
-  os.system('clear')
+  os.system('cls')
   print("------------------------\n1: Log in\n2: Sign up\n------------------------\n")
   choice = input()
 
   if(choice == "1"):
     #LOG IN - (0, data length, "username,password,", checksum)
-    os.system('clear')
+    os.system('cls')
     print("Username: ")
     userName = input()
     password = getpass.getpass("Password: ")
@@ -72,17 +74,20 @@ while True:
               userChoice = messageParser.make(parser, cr, serverPublicKey, "A", enteredCode)
               clientSocket.send(userChoice)
 		
-
+        else:
+          attempts += 1
       else:
         print("Error: Don't put commas in the password!")
+        attempts += 1
         time.sleep(3.5)
     else:
       print("Error: Don't put commas in the username!")
+      attempts += 1
       time.sleep(3.5)
 
   elif(choice == "2"):
     #SIGN UP - (1, data length, "username,password,password2,", checksum)
-    os.system('clear')
+    os.system('cls')
     print("Forename: ")
     forename = input()
     print("Surname: ")
@@ -134,6 +139,13 @@ while True:
     command, dataLen, data, checksum = messageParser.parse(parser, response)
     print(data.decode("UTF-8"))
     time.sleep(3.5)
+	
+  if(attempts == 3):
+    attempts = 0
+    for i in range(0,15):
+      os.system("cls")
+      print("You have attempted to log in and fail multiple times, please wait " + str(15-i) + " seconds before trying again!")
+      time.sleep(1)
 
 clientSocket.close()
 #print (decryptedMsg)
