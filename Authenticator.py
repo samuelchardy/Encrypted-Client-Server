@@ -7,38 +7,38 @@ class Authenticator:  # <---------------------NEEDS TO BECOME A SERVER SUB-CLASS
 
    __instance = None
    @staticmethod 
-   def getInstance():
-      """ Static access method. """
-      if Authenticator.__instance == None:
-         Authenticator()
-      return Authenticator.__instance
-   def __init__(self):
-      """ Virtually private constructor. """
-      if Authenticator.__instance != None:
-         raise Exception("This class is a singleton!")
-      else:
-         Authenticator.__instance = self
-      Methods=[]
-      #Own record
-      __AddMethod("getMyRecord",getownRecord,[0])
-      #Appointments
-      __AddMethod("getAppointment",getAppointmentByPID, [0,1])
-      __AddMethod("appendAppointment",appendAppointmentByPID, [1])
-      __AddMethod("writeAppointment",writeToAppointmentByPID, [1])
-      #Records
-      __AddMethod("getRecord",getRecordByPID, [2,3,4,5])
-      __AddMethod("appendRecord",appendRecordByPID, [2,3])
-      __AddMethod("writeRecord",writeToRecordByPID, [3])
-      #Audit Logs
-      __AddMethod("getAudit",getAuditLogs, [4,6])
-      #Staff Info 
-      __AddMethod("getStaffInfo",getStaffInfoBySID, [1,5,6])
-      __AddMethod("appendStaffInfo",appendStaffInfoBySID, [5])
-      __AddMethod("writeStaffInfo",writeToStaffInfo, [5])
-      __AddMethod("deleteStaffInfo",deleteStaffInfo, [5])
-      #Role Assignment
-      __AddMethod("getRole",getRoleBySID,[6])
-      __AddMethod("elevateRole",elevate, [6])
+	def getInstance():
+		""" Static access method. """
+		if Authenticator.__instance == None:
+			Authenticator()
+		return Authenticator.__instance
+	def __init__(self):
+		""" Virtually private constructor. """
+		if Authenticator.__instance != None:
+			raise Exception("This class is a singleton!")
+		  else:
+			 Authenticator.__instance = self
+		  Methods=[]
+		  #Own record
+		  __AddMethod("getMyRecord",getownRecord,[0])
+		  #Appointments
+		  __AddMethod("getAppointment",getAppointmentByPID, [0,1])
+		  __AddMethod("appendAppointment",appendAppointmentByPID, [1])
+		  __AddMethod("writeAppointment",writeToAppointmentByPID, [1])
+		  #Records
+		  __AddMethod("getRecord",getRecordByPID, [2,3,4,5])
+		  __AddMethod("appendRecord",appendRecordByPID, [2,3])
+		  __AddMethod("writeRecord",writeToRecordByPID, [3])
+		  #Audit Logs
+		  __AddMethod("getAudit",getAuditLogs, [4,6])
+		  #Staff Info 
+		  __AddMethod("getStaffInfo",getStaffInfoBySID, [1,5,6])
+		  __AddMethod("appendStaffInfo",appendStaffInfoBySID, [5])
+		  __AddMethod("writeStaffInfo",writeToStaffInfo, [5])
+		  __AddMethod("deleteStaffInfo",deleteStaffInfo, [5])
+		  #Role Assignment
+		  __AddMethod("getRole",getRoleBySID,[6])
+		  __AddMethod("elevateRole",elevate, [6])
       
   def __AddMethod(FunctionName,Caller,Roles):,
     method = Dict()
