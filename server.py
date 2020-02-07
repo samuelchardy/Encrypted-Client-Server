@@ -4,10 +4,10 @@ from messageParser     		import messageParser
 from Verify            		import Verify
 from password_strength 		import PasswordStats
 from password_strength 		import PasswordPolicy
-from email.mime.multipart 	import MIMEMultipart
+from email.mime.multipart import MIMEMultipart
 from email.mime.text  		import MIMEText
-from datetime 				import datetime
-from Authenticator 		import authenticator
+from datetime 				    import datetime
+#from Authenticator 		    import Authenticator
 class Server():
   
   class ServerThread(threading.Thread):
@@ -135,8 +135,12 @@ class Server():
         else:
           print("Error: Data length value is too large.")
         if attempts<0:
-          #time.sleep(60)
+          time.sleep(60)
           attempts+=1
+          for i in range(0,60):
+            os.system("cls")
+            print("You have attempted to log in and fail multiple times, please wait " + str(15-i) + " seconds before trying again!")
+            time.sleep(1)
       #here we're logged in after this loop so well
       #go to give options for authentication. 
     
@@ -164,15 +168,16 @@ class Server():
         print("#fail") 
       return False
     def getEmailforUser(self, username):
-	try: 
-		c= self.server.DB()
-      		mc = c.cursor()
-      		mc.execute("SELECT Email from personalinfo where Username = '"+username+"'")
-      		results = mc.fetchall()
-		for r in results:
-			return r
-	except:
-		return null
+      try: 
+        c= self.server.DB()
+        mc = c.cursor()
+        mc.execute("SELECT Email from personalinfo where Username = '"+username+"'")
+        results = mc.fetchall()
+        for r in results:
+          return r
+      except:
+        return null
+
     def signUp(self, username, password, secret, dob, surname, forename):
       dt=datetime.now()
       validTime=dt.strftime("%Y-%m-%d %H:%M:%S")
@@ -202,7 +207,7 @@ class Server():
       clientPublicKey = crypto.loadPublicKeyFromBytes(self.c, clientPublicKey) #<---
       self.authenticate(clientPublicKey)
       #ACCESS TO MAIN FUNCTIONALITY IF YOU HAVE THE RGHT ROLE
-            
+
   def connectDB(self):
     conn = mysql.connector.connect(user="threesixthreedb", 
                                 password="Jd19_m_20k02",
