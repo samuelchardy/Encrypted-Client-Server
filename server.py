@@ -7,7 +7,7 @@ from password_strength 		import PasswordPolicy
 from email.mime.multipart 	import MIMEMultipart
 from email.mime.text  		import MIMEText
 from datetime 				import datetime
-
+from Authenticator 		import authenticator
 class Server():
   
   class ServerThread(threading.Thread):
@@ -24,7 +24,7 @@ class Server():
       self.clientAddress=clientAddress
       print ("New connection added: ", clientAddress)
 	  
-    def sendOTP(self,email="sampanda91@gmail.com"):
+    def sendOTP(self,email="sampanda91@gmail.com"): #used during testing
       current_code = self.OTP.get()
       
       #Generate email
@@ -83,7 +83,8 @@ class Server():
               print("\ntrying to log in")#SEND MESSAGE TELLING THEM TO ENTER OTP CODE
               otpMsg = messageParser.make(self.server.parser, self.c, clientPublicKey, "1", "Please check your email and enter the code we have sent you!")
               self.clientsocket.send(otpMsg)
-              self.sendOTP() # not declared in memory so cant be listened for. 
+		
+              self.sendOTP(self.getEmailforUser(username)) # not declared in memory so cant be listened for.     <--------------get user Email
               print("sent OTP")
 			        #RECIEVE OTP CODE
               otpCode = self.clientsocket.recv(1024)
@@ -162,7 +163,16 @@ class Server():
         d.close()
         print("#fail") 
       return False
-	  
+    def getEmailforUser(self, username):
+	try: 
+		c= self.server.DB()
+      		mc = c.cursor()
+      		mc.execute("SELECT Email from personalinfo where Username = '"+username+"'")
+      		results = mc.fetchall()
+		for r in results:
+			return r
+	except:
+		return null
     def signUp(self, username, password, secret, dob, surname, forename):
       dt=datetime.now()
       validTime=dt.strftime("%Y-%m-%d %H:%M:%S")
