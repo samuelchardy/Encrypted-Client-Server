@@ -1,5 +1,0 @@
-pyotp==2.3.0
-cryptography==2.8
-mysql-connector==2.2.9
-password_strength==0.0.3.post2
-pyotp==2.3.0
