@@ -7,7 +7,7 @@ from password_strength 		import PasswordPolicy
 from email.mime.multipart import MIMEMultipart
 from email.mime.text  		import MIMEText
 from datetime 				    import datetime
-#from Authenticator 		    import Authenticator
+from Authenticator 		    import Authenticator
 class Server():
   
   class ServerThread(threading.Thread):
@@ -23,7 +23,7 @@ class Server():
       self.clientsocket = clientsocket
       self.clientAddress=clientAddress
       print ("New connection added: ", clientAddress)
-	  
+      self.loggedin=False
     def sendOTP(self,email="sampanda91@gmail.com"): #used during testing
       current_code = self.OTP.get()
       
@@ -56,7 +56,7 @@ class Server():
       
     
     def authenticate(self,clientPublicKey):
-      loggedin=False
+      self.loggedin=False
       attempts=3 ####### this can be updates later. 
       while not loggedin:
         attempts-=1
@@ -137,9 +137,10 @@ class Server():
         if attempts<0:
           time.sleep(60)
           attempts+=1
-          for i in range(0,60):
+          delay=60
+          for i in range(delay):
             os.system("cls")
-            print("You have attempted to log in and fail multiple times, please wait " + str(15-i) + " seconds before trying again!")
+            print("You have attempted to log in and fail multiple times, please wait an extra " + str(delay-i) + " seconds before trying again!")
             time.sleep(1)
       #here we're logged in after this loop so well
       #go to give options for authentication. 
@@ -207,7 +208,9 @@ class Server():
       clientPublicKey = crypto.loadPublicKeyFromBytes(self.c, clientPublicKey) #<---
       self.authenticate(clientPublicKey)
       #ACCESS TO MAIN FUNCTIONALITY IF YOU HAVE THE RGHT ROLE
-
+      while self.loggedin:
+	# await user log off
+ 	# listen for commands call for authenticator
   def connectDB(self):
     conn = mysql.connector.connect(user="threesixthreedb", 
                                 password="Jd19_m_20k02",
@@ -226,7 +229,7 @@ class Server():
     print("Server Active")
     self.emailAddr='363hospitalmfaservice@gmail.com'
     self.pw='InsecurePassword'
-    
+    self.Authenticator=authenticator()
     
     self.DB=self.connectDB
   #INITIALISE MESSAGEPARSER
