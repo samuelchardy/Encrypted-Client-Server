@@ -22,8 +22,11 @@ class Server():
       threading.Thread.__init__(self)
       self.clientsocket = clientsocket
       self.clientAddress=clientAddress
+      self.username = ""
       print ("New connection added: ", clientAddress)
       self.loggedin=False
+
+
     def sendOTP(self,email="sampanda91@gmail.com"): #used during testing
       current_code = self.OTP.get()
       
@@ -97,9 +100,11 @@ class Server():
               self.loggedin=True
               logResult = "Welcome!"
               logCode = "1"
+              self.username = username
               if(not self.OTP.checkCode(otpCode)):
                 logResult = "Incorrect code, please try again!"
                 logCode = "0"
+                self.loggedin = False
               print(logCode)
               logRes = messageParser.make(self.server.parser, self.c, clientPublicKey, logCode, logResult)
               self.clientsocket.send(logRes)
@@ -117,9 +122,10 @@ class Server():
             surname = splitData[1]
             dob = splitData[2]
             username = splitData[3]
-            password = splitData[4]
-            password2 = splitData[5]
-            secret = splitData[6]
+            email = splitData[4]
+            password = splitData[5]
+            password2 = splitData[6]
+            secret = splitData[7]
 
 
             if(password != password2):
@@ -174,8 +180,7 @@ class Server():
         mc = c.cursor()
         mc.execute("SELECT Email from personalinfo where Username = '"+username+"'")
         results = mc.fetchall()
-        for r in results:
-          return r
+        return results[0][0]
       except:
         return null
 
@@ -208,8 +213,10 @@ class Server():
       clientPublicKey = crypto.loadPublicKeyFromBytes(self.c, clientPublicKey) #<---
       self.authenticate(clientPublicKey)
       #ACCESS TO MAIN FUNCTIONALITY IF YOU HAVE THE RGHT ROLE
-      while self.loggedin:
-        print("")
+      #while self.loggedin:
+      #  roles = Authenticator.callMethod("getRoles", self.username)
+      #  methods = Authenticator.returnValidMethods(roles)
+      #  print("")
 
 
 	# await user log off

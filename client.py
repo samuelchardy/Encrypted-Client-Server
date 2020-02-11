@@ -64,6 +64,7 @@ while True:
 
                 if(command == "1"):
                     enteredCode = input()
+                    enteredCode = enteredCode.strip()
                     otpReply = messageParser.make(
                         parser, cr, serverPublicKey, "A", enteredCode)
                     clientSocket.send(otpReply)
@@ -130,6 +131,9 @@ while True:
             else:
                 validpassword = True
 
+        print("Email: ")
+        email = input()
+
         print("Please enter a random word, you will not be asked for this in the future.")
         secret = input()
         m = hashlib.md5()
@@ -140,8 +144,7 @@ while True:
         m.update(password2.encode("UTF-8"))
         password2MD5 = m.hexdigest()
 
-        dataA = forename + "," + surname + "," + dob + "," + userName + \
-            "," + password1MD5 + "," + password2MD5 + "," + secret + ","
+        dataA = forename + "," + surname + "," + dob + "," + userName + "," + email +"," + password1MD5 + "," + password2MD5 + "," + secret + ","
         completeMsg = messageParser.make(
             parser, cr, serverPublicKey, "B", dataA)
         clientSocket.send(completeMsg)

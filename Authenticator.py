@@ -89,7 +89,23 @@ class Authenticator:  # <---------------------NEEDS TO BECOME A SERVER SUB-CLASS
     c.commit()
     c.close()
     return ReturnDict
-                        
+
+
+  def returnValidMethods(self, permissionNo):
+    hasRoles = []
+    myID = getUserID(username)
+    c = connectDB() # will become self.server.DB()
+    mc = c.cursor()
+    mc.execute("SELECT RoleID FROM roles WHERE UserID = "+ str(myID))
+    results = mc.fetchAll()
+    for res in results:
+      hasRoles.append(res[0])
+    for a in Methods:
+      if [set(a[rolesAccess])&set([permissionNo])].len()>0:
+        NamesMethods.append(a[methodName])
+   
+    return NamesMethod
+
 
   def getAppointmentByPID(self, username, mc):#finds the next appointment for patient id
     mc.execute("SELECT NextAppointment from Record where Username = " + 'username')
@@ -334,12 +350,14 @@ class Authenticator:  # <---------------------NEEDS TO BECOME A SERVER SUB-CLASS
   #Role Assignment
   def getRoleBySID(self,username,mc):
     #returns the role of the staff id's account
+    result=[]
     userid = getUserID(username,mc)
     mc.execute("select distinct roleID from roles where userID="+str(userID))
     results = mc.fetchall()
     for res in results:
+      result.append(res[0])
       print(res)
-    return results
+    return result
   def elevate(self,username, mc, c, key, value, value2= None):
     #Alter the role assigned to new value of the Account with ID
     #0 = patient, 1 = receptionist, 2 = nurse, 3 = doctor
