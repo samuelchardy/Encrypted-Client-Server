@@ -44,33 +44,33 @@ class Authenticator:  # <---------------------NEEDS TO BECOME A SERVER SUB-CLASS
     self.Methods=dict()
     self.connectDB=ConnectDB
     #Appointments
-    self.__AddMethod("getAppointment",self.getAppointmentByPID, [0,1])
-    self.__AddMethod("appendAppointment",self.appendAppointmentByPID, [1])
-    self.__AddMethod("writeAppointment",self.writeToAppointmentByPID, [1])
+    self.__AddMethod("getApp",self.getAppointmentByPID, [0,1])
+    self.__AddMethod("appApp",self.appendAppointmentByPID, [1])
+    self.__AddMethod("writeApp",self.writeToAppointmentByPID, [1])
     #Records
-    self.__AddMethod("getRecord",self.getRecordByPID, [0,2,3,4,5])
-    self.__AddMethod("appendRecord",self.appendRecordByPID, [2,3])
-    self.__AddMethod("writeRecord",self.writeToRecordByPID, [3])
+    self.__AddMethod("getRec",self.getRecordByPID, [0,2,3,4,5])
+    self.__AddMethod("appRec",self.appendRecordByPID, [2,3])
+    self.__AddMethod("writeRec",self.writeToRecordByPID, [3])
     #Prescription
-    self.__AddMethod("addPrescription",self.addPrescription, [3])
-    self.__AddMethod("getPrescriptionHistory",self.getPrescriptionHistory, [2,3])
-    self.__AddMethod("getCurrentPrescription",self.getCurrentPrescription, [2,3]) 
+    self.__AddMethod("addPres",self.addPrescription, [3])
+    self.__AddMethod("getPresHist",self.getPrescriptionHistory, [2,3])
+    self.__AddMethod("getCurPres",self.getCurrentPrescription, [2,3]) 
     #Conditions
-    self.__AddMethod("createCondition",self.createCondition, [3])
-    self.__AddMethod("getConditionHistory",self.getConditionHistory, [2,3])
-    self.__AddMethod("getCurrentCondition",self.getCurrentCondition, [2,3])
+    self.__AddMethod("createCond",self.createCondition, [3])
+    self.__AddMethod("getCondHist",self.getConditionHistory, [2,3])
+    self.__AddMethod("getCurCond",self.getCurrentCondition, [2,3])
     #User
     self.__AddMethod("getUserInfo",self.getUserInfoByUsername,[0,1,2,3,4,5,6])
-    self.__AddMethod("updateUser",self.updateUsers,[0,1,2,3,4,5,6])
-    self.__AddMethod("updatePassword",self.updatePassword,[0,1,2,3,4,5,6])
+    self.__AddMethod("updUser",self.updateUsers,[0,1,2,3,4,5,6])
+    self.__AddMethod("updPass",self.updatePassword,[0,1,2,3,4,5,6])
     ######### Question Time ############## This one in here or on login?
-    self.__AddMethod("updateValidation",self.updateValidation,[0,1,2,3,4,5,6])
+    self.__AddMethod("updValid",self.updateValidation,[0,1,2,3,4,5,6])
     #Audit Logs
     self.__AddMethod("getAudit",self.getAuditLogs, [4,6])
     #Staff Info 
     self.__AddMethod("addStaff",self.addStaffByUsername,[5,6])
     self.__AddMethod("getStaffInfo",self.getStaffInfoByUsername, [1,5,6])
-    self.__AddMethod("appendStaffInfo",self.appendStaffInfoByUsername, [5])
+    self.__AddMethod("appStaffInfo",self.appendStaffInfoByUsername, [5])
     #Role Assignment
     self.__AddMethod("getRoles",self.getRoleBySID,[6])
     self.__AddMethod("elevateRole",self.elevate, [6])
@@ -78,6 +78,7 @@ class Authenticator:  # <---------------------NEEDS TO BECOME A SERVER SUB-CLASS
     self.__AddMethod("getUserID",self.getUserID,[0,1,2,3,4,5,6])
     self.__AddMethod("getStaffID",self.getStaffID,[0,1,2,3,4,5,6])
     self.__AddMethod("returnValidMethods",self.returnValidMethods,[0,1,2,3,4,5,6])
+
   def __AddMethod(self,FunctionName,Caller,Roles):
     method = dict()
     method.update({"call":Caller, "rolesAccess":Roles})
@@ -118,13 +119,9 @@ class Authenticator:  # <---------------------NEEDS TO BECOME A SERVER SUB-CLASS
   def returnValidMethods(self, permissionNo):
     NamesMethods=[]
     b=set(permissionNo)
-    #b.add(permissionNo) 
     for a in self.Methods.items():
-      #print(a)
       if len(list(set(a[1].get("rolesAccess"))&b))>0:
         NamesMethods.append(a[0])
-  
-
     return NamesMethods
 
 
@@ -256,6 +253,7 @@ class Authenticator:  # <---------------------NEEDS TO BECOME A SERVER SUB-CLASS
     c.close()
     
     return results
+
   # update user fields
   def updateUsers(self,username, key, value  ):
     c= self.connectDB()# will become self.server.DB()
@@ -375,6 +373,7 @@ class Authenticator:  # <---------------------NEEDS TO BECOME A SERVER SUB-CLASS
     c.close()
 
     return results
+
   #Staff data methods
   def addStaffByUsername(self,username ):
     c= self.connectDB()# will become self.server.DB()
@@ -450,7 +449,7 @@ class Authenticator:  # <---------------------NEEDS TO BECOME A SERVER SUB-CLASS
     results = mc.fetchall()
     for res in results:
       result.append(res[0])
-      print(res)
+      #print(res)
     c.close()
 
     return result

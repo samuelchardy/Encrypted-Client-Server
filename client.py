@@ -33,6 +33,8 @@ clientSocket.send(publicKey)
 
 # USER INTERFACE
 attempts = 0
+cliDict = {"getApp":"Get Appointment", "appApp":"Add Appointment", "writeApp":"Update Appointment", "getRec":"View Records", "appRec":"Add a Record", "writeRec":"Update a Record", "addPres":"Add a New Prescription", "getPresHist":"View Prescription History", "getCurPres":"View Current Prescriptions", "createCond":"Add New Condition", "getCondHist":"View Condition History", "getCurCond":"View Current Conditions", "getUserInfo":"View User Information", "updUser":"Update User Information", "updPass":"Update User Password", "updValid":"Update Validation", "getAudit":"View Audit Logs", "addStaff":"Add New Staff Member", "getStaffInfo":"View Staff Info", "appStaffInfo":"Update Staff Information", "getRoles":"View Account Roles", "elevateRole":"Elevate Role", "getUserID":"Get User By ID", "getStaffID":"Get Staff By ID"}
+
 
 while True:
     os.system('cls')
@@ -76,12 +78,22 @@ while True:
                     print(data.decode("ASCII"))
 
                     if(newCommand == "1"):
+                        cliOpts = clientSocket.recv(1024)
+                        cliOpts = crypto.decryptData(cr, cliOpts)
+                        newCommand, dataLen, cli, checksum = messageParser.parse(parser, cliOpts)
+                        cli = cli.decode("ASCII")
+                        cli = cli.split(",")
+
                         while True:
+                            os.system("cls")
+                            print("------------------------------")
+                            for i in range(0, len(cli)-1):
+                                print(str(i+1) + ": " + cliDict[cli[i]])
+                            print("------------------------------")
                             # Only print what the user is able to do...
-                            print("OPTIONS...")
                             enteredCode = input()
-                            userChoice = messageParser.make(
-                                parser, cr, serverPublicKey, "A", enteredCode)
+                            sendData = cli[int(enteredCode)-1]
+                            userChoice = messageParser.make(parser, cr, serverPublicKey, "A", sendData)
                             clientSocket.send(userChoice)
 
                 else:

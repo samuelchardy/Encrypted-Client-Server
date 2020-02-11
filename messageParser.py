@@ -19,7 +19,6 @@ class messageParser:
     msg = str(command) + dataLength + data
     checksum = hashlib.md5(bytes(msg.encode("ASCII")))
     msg = str(msg) + str(checksum)
-
     encryptedMsg = crypto.encryptData(cr, msg, publicKey)
     return encryptedMsg
 

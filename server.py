@@ -172,7 +172,7 @@ class Server():
         return True
       else:
         d.close()
-        print("#fail") 
+        print("Failed Login") 
       return False
     def getEmailforUser(self, username):
       try: 
@@ -204,9 +204,8 @@ class Server():
       print ("Connection from : "+ str(self.clientAddress))
       #self.csocket.send(bytes("Hi, This is from Server..",'ASCII'))
       msg = ''
-      #
       self.clientsocket.send(self.publicKey)
-          #GETTING CLIENTS PUBLIC KEY
+      #GETTING CLIENTS PUBLIC KEY
       clientPublicKey =  self.clientsocket.recv(1024)
       print("client public\n" + str(clientPublicKey))
       clientPublicKey = crypto.loadPublicKeyFromBytes(self.c, clientPublicKey) #<---
@@ -215,7 +214,18 @@ class Server():
       while self.loggedin:
         roles = self.server.Authenticator.callMethod("getRoles", self.username,self.username)
         methods = self.server.Authenticator.returnValidMethods(roles)
-        print("")
+        methods = methods[0:len(methods)-1]
+        methodsStr = ""
+        for method in methods:
+          methodsStr = methodsStr + method + ","
+
+        cliMsg = messageParser.make(self.server.parser, self.c, clientPublicKey, "1", methodsStr)
+        self.clientsocket.send(cliMsg)
+
+        while True:
+          cliInput = self.clientsocket.recv(1024)
+          cliInput = crypto.decryptData(self.c, cliInput)
+          print(cliInput)
 
 
 	# await user log off
