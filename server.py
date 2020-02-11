@@ -1,4 +1,4 @@
-import socket, threading, json, hashlib, smtplib, ssl, pyotp, mysql.connector
+import socket, threading, json, hashlib, smtplib, ssl, pyotp, mysql.connector, random, string
 from Crypto2           		import crypto
 from messageParser     		import messageParser
 from Verify            		import Verify
@@ -54,21 +54,43 @@ class Server():
       finally:
         s.quit()
       
-    
+    def createToken(self):
+      return ''.join([random.choice(string.ascii_letters + string.digits) for n in range(32)])
+
     def authenticate(self,clientPublicKey):
       self.loggedin=False
       attempts=3 ####### this can be updates later. 
       while not self.loggedin:
         attempts-=1
         msg = self.clientsocket.recv(1024)
-        if(len(msg) == 294):
+        token = ''
+        newToken = "roguevalue0000000000000000000000"
+        acceptToken = False
+
+        print("MESSAGE LENGTH : " + str(len(msg)))
+        
+        if(len(msg) == 298):
           #DECRYPT DATA
           msg = crypto.decryptData(self.c, msg)
-          #PARSE MESSAGE INTO ITS COMPONENTS
-          command, dataLen, data, checksum = messageParser.parse(self.server.parser, msg)
-          print("COMMAND: " + str(command) + "\nDATA LEN: " + str(dataLen) + "\nDATA: " + str(data) + "\nCHECKSUM: " + str(checksum))
 
-        if(int(dataLen) < 255):
+          #PRINT MESSAGE (DEBUG)
+          print(msg)
+
+          #PARSE MESSAGE INTO ITS COMPONENTS
+          token, command, dataLen, data, checksum = messageParser.parse(self.server.parser, msg)
+          print("TOKEN: " + str(token) + "\nCOMMAND: " + str(command) + "\nDATA LEN: " + str(dataLen) + "\nDATA: " + str(data) + "\nCHECKSUM: " + str(checksum))
+
+          if newToken != "roguevalue0000000000000000000000":
+              if token == oldToken:
+                  oldToken = newToken
+                  acceptToken = True
+          else:
+              acceptToken = True
+
+        if(int(dataLen) < 255 and acceptToken):
+
+          newToken = self.createToken()
+
           if(command == "A"):
             
             #harvest input user
@@ -81,7 +103,7 @@ class Server():
             print("password: " + password)
             if(self.LoginChecker(username,password)):#check against sql server for user/passowrd store#if fails, repeat login loo
               print("\ntrying to log in")#SEND MESSAGE TELLING THEM TO ENTER OTP CODE
-              otpMsg = messageParser.make(self.server.parser, self.c, clientPublicKey, "1", "Please check your email and enter the code we have sent you!")
+              otpMsg = messageParser.make(self.server.parser, self.c, newtoken, clientPublicKey, "1", "Please check your email and enter the code we have sent you!")
               self.clientsocket.send(otpMsg)
 		
               self.sendOTP(self.getEmailforUser(username)) # not declared in memory so cant be listened for.     <--------------get user Email
@@ -89,7 +111,7 @@ class Server():
 			        #RECIEVE OTP CODE
               otpCode = self.clientsocket.recv(1024)
               otpCode = crypto.decryptData(self.c, otpCode)
-              command, dataLen, otpCode, checksum = messageParser.parse(self.server.parser, otpCode)
+              token, command, dataLen, otpCode, checksum = messageParser.parse(self.server.parser, otpCode)
               print(otpCode.decode("ASCII"))
               otpCode = otpCode.decode("ASCII")[:-1]
               print(self.OTP.checkCode(otpCode))
@@ -101,10 +123,10 @@ class Server():
                 logResult = "Incorrect code, please try again!"
                 logCode = "0"
               print(logCode)
-              logRes = messageParser.make(self.server.parser, self.c, clientPublicKey, logCode, logResult)
+              logRes = messageParser.make(self.server.parser, self.c, newToken, clientPublicKey, logCode, logResult)
               self.clientsocket.send(logRes)
             else:
-              failMsg = messageParser.make(self.server.parser, self.c, clientPublicKey, "0", "Incorrect username or password!")
+              failMsg = messageParser.make(self.server.parser, self.c, newToken, clientPublicKey, "0", "Incorrect username or password!")
               self.clientsocket.send(failMsg)
 			 
           elif(command == "B"):
@@ -123,17 +145,20 @@ class Server():
 
 
             if(password != password2):
-              completeMsg = messageParser.make(self.server.parser, self.c, clientPublicKey, "0", "Passwords don't match, please try again!")
+              completeMsg = messageParser.make(self.server.parser, self.c, clientPublicKey, newToken, "0", "Passwords don't match, please try again!")
               self.clientsocket.send(completeMsg)
             else:
-              message = messageParser.make(self.server.parser, self.c, clientPublicKey, "1", "signed up")
+              message = messageParser.make(self.server.parser, self.c, clientPublicKey, newToken, "1", "signed up")
               self.signUp(username, password, secret, dob, surname, forename)
               self.clientsocket.send(message)
       
           elif(command == "2"):
             print("\nsomething else")
         else:
-          print("Error: Data length value is too large.")
+            if(acceptToken):
+                print("Error: Data length value is too large.")
+            else:
+                print("Error: Token not accepted.")
         if attempts<0:
           time.sleep(60)
           attempts+=1
@@ -144,8 +169,11 @@ class Server():
             time.sleep(1)
       #here we're logged in after this loop so well
       #go to give options for authentication. 
-    
-    
+      else:
+          #rejected token.
+          toSend = messageParser.make(self.server.parser, self.c, clientPublicKey, "0000000FAILEDTOKENDEFAULT0000000", "0", "Token did not match.")
+          self.clientsocket.send(toSend)
+
     def LoginChecker(self,username, password):
       #connect to db
       d=self.server.DB()
@@ -168,6 +196,7 @@ class Server():
         d.close()
         print("#fail") 
       return False
+
     def getEmailforUser(self, username):
       try: 
         c= self.server.DB()

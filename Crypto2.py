@@ -13,7 +13,7 @@ class crypto:
     global privateKey, publicKey
     privateKey = rsa.generate_private_key(
       public_exponent = 65537,
-      key_size = 2352,
+      key_size = 2384,
       backend = default_backend()
     )
     publicKey = privateKey.public_key()
@@ -93,7 +93,7 @@ class crypto:
 
 
   def encryptData(self, data, key):
-    message = bytes(data.encode("UTF-8"))
+    message = bytes(data.encode("ASCII"))
     cipherText = key.encrypt(
       message,
       padding.OAEP(

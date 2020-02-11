@@ -17,6 +17,9 @@ publicKey = crypto.loadPublicKey(cr)
 # INITIALISE MESSAGEPARSER
 parser = messageParser()
 
+# CREATE TOKEN VARIABLE
+token = "00000000000000000000000000000000"
+
 # CONNECTING TO THE SERVER
 clientSocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 host = socket.gethostname()
@@ -50,7 +53,7 @@ while True:
         passwordMD5 = m.hexdigest()
         data = userName + "," + passwordMD5 + ","
         completeMsg = messageParser.make(
-            parser, cr, serverPublicKey, "A", data)
+            parser, cr, serverPublicKey, token, "A", data)
 
         if(messageParser.checkData(parser, userName)):
             if(messageParser.checkData(parser, password)):
@@ -65,12 +68,12 @@ while True:
                 if(command == "1"):
                     enteredCode = input()
                     otpReply = messageParser.make(
-                        parser, cr, serverPublicKey, "A", enteredCode)
+                        parser, cr, serverPublicKey, token, "A", enteredCode)
                     clientSocket.send(otpReply)
 
                     newResponse = clientSocket.recv(1024)
                     newResponse = crypto.decryptData(cr, newResponse)
-                    newCommand, dataLen, data, checksum = messageParser.parse(
+                    token, newCommand, dataLen, data, checksum = messageParser.parse(
                         parser, newResponse)
                     print(data.decode("ASCII"))
 
@@ -80,7 +83,7 @@ while True:
                             print("OPTIONS...")
                             enteredCode = input()
                             userChoice = messageParser.make(
-                                parser, cr, serverPublicKey, "A", enteredCode)
+                                parser, cr, serverPublicKey, token, "A", enteredCode)
                             clientSocket.send(userChoice)
 
                 else:
@@ -143,12 +146,12 @@ while True:
         dataA = forename + "," + surname + "," + dob + "," + userName + \
             "," + password1MD5 + "," + password2MD5 + "," + secret + ","
         completeMsg = messageParser.make(
-            parser, cr, serverPublicKey, "B", dataA)
+            parser, cr, serverPublicKey, token, "B", dataA)
         clientSocket.send(completeMsg)
 
         response = clientSocket.recv(1024)
         response = crypto.decryptData(cr, response)
-        command, dataLen, data, checksum = messageParser.parse(
+        token, command, dataLen, data, checksum = messageParser.parse(
             parser, response)
         print(data.decode("UTF-8"))
         time.sleep(3.5)
