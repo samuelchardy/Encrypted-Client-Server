@@ -206,17 +206,16 @@ class Server():
       msg = ''
       #
       self.clientsocket.send(self.publicKey)
-
           #GETTING CLIENTS PUBLIC KEY
       clientPublicKey =  self.clientsocket.recv(1024)
       print("client public\n" + str(clientPublicKey))
       clientPublicKey = crypto.loadPublicKeyFromBytes(self.c, clientPublicKey) #<---
       self.authenticate(clientPublicKey)
       #ACCESS TO MAIN FUNCTIONALITY IF YOU HAVE THE RGHT ROLE
-      #while self.loggedin:
-      #  roles = Authenticator.callMethod("getRoles", self.username)
-      #  methods = Authenticator.returnValidMethods(roles)
-      #  print("")
+      while self.loggedin:
+        roles = self.server.Authenticator.callMethod("getRoles", self.username,self.username)
+        methods = self.server.Authenticator.returnValidMethods(roles)
+        print("")
 
 
 	# await user log off
@@ -239,9 +238,10 @@ class Server():
     print("Server Active")
     self.emailAddr='363hospitalmfaservice@gmail.com'
     self.pw='InsecurePassword'
-    self.Authenticator=Authenticator()
-    
     self.DB=self.connectDB
+    self.Authenticator=Authenticator(self.connectDB)
+    
+    
   #INITIALISE MESSAGEPARSER
     self.parser = messageParser()
 
