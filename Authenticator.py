@@ -1,3 +1,5 @@
+
+from datetime import datetime
 class Authenticator:  # <---------------------NEEDS TO BECOME A SERVER SUB-CLASS
     # This is to be the only method any given role can access then acess, it has
     # super priveledges to check that the given user can in fact access the other 
@@ -5,46 +7,60 @@ class Authenticator:  # <---------------------NEEDS TO BECOME A SERVER SUB-CLASS
      #bepassed back to the caller/. this will also be in a singleton pattern to 
     # stop it being overwritten 
 
-   __instance = None
-   @staticmethod 
-   def getInstance():
-      """ Static access method. """
-      if Authenticator.__instance == None:
-         Authenticator()
-      return Authenticator.__instance
-   def __init__(self):
-      """ Virtually private constructor. """
-      if Authenticator.__instance != None:
-         raise Exception("This class is a singleton!")
-      else:
-         Authenticator.__instance = self
-      self.Methods=[]
-      
-      #Appointments
-      self.__AddMethod("getAppointment",getAppointmentByPID, [0,1])
-      self.__AddMethod("appendAppointment",appendAppointmentByPID, [1])
-      self.__AddMethod("writeAppointment",writeToAppointmentByPID, [1])
-      #Records
-      self.__AddMethod("getRecord",getRecordByPID, [2,3,4,5])
-      self.__AddMethod("appendRecord",appendRecordByPID, [2,3])
-      self.__AddMethod("writeRecord",writeToRecordByPID, [3])
-      #Audit Logs
-      self.__AddMethod("getAudit",getAuditLogs, [4,6])
-      #Staff Info 
-      self.__AddMethod("getStaffInfo",getStaffInfoBySID, [1,5,6])
-      self.__AddMethod("appendStaffInfo",appendStaffInfoBySID, [5])
-      self.__AddMethod("writeStaffInfo",writeToStaffInfo, [5])
-      self.__AddMethod("deleteStaffInfo",deleteStaffInfo, [5])
-      #Role Assignment
-      self.__AddMethod("getRole",getRoleBySID,[6])
-      self.__AddMethod("elevateRole",elevate, [6])
-      
-  def __AddMethod(FunctionName,Caller,Roles):,
-    method = Dict()
+  __instance = None
+  @staticmethod 
+  def getInstance():
+    """ Static access method. """
+    if Authenticator.__instance == None:
+        Authenticator()
+    return Authenticator.__instance
+  def __init__(self):
+    """ Virtually private constructor. """
+    if Authenticator.__instance != None:
+        raise Exception("This class is a singleton!")
+    else:
+        Authenticator.__instance = self
+    self.Methods=[]
+    
+    #Appointments
+    self.__AddMethod("getAppointment",self.getAppointmentByPID, [0,1])
+    self.__AddMethod("appendAppointment",self.appendAppointmentByPID, [1])
+    self.__AddMethod("writeAppointment",self.writeToAppointmentByPID, [1])
+    #Records
+    self.__AddMethod("getRecord",self.getRecordByPID, [0,2,3,4,5])
+    self.__AddMethod("appendRecord",self.appendRecordByPID, [2,3])
+    self.__AddMethod("writeRecord",self.writeToRecordByPID, [3])
+    #Prescription
+    self.__AddMethod("addPrescription",self.addPrescription, [3])
+    self.__AddMethod("getPrescriptionHistory",self.getPrescriptionHistory, [2,3])
+    self.__AddMethod("getCurrentPrescription",self.getCurrentPrescription, [2,3]) 
+    #Conditions
+    self.__AddMethod("createCondition",self.createCondition, [3])
+    self.__AddMethod("getConditionHistory",self.getConditionHistory, [2,3])
+    self.__AddMethod("getCurrentCondition",self.getCurrentCondition, [2,3])
+    #User
+    self.__AddMethod("getUserInfo",self.getUserInfoByUsername,[0,1,2,3,4,5,6])
+    self.__AddMethod("updateUser",self.updateUsers,[0,1,2,3,4,5,6])
+    self.__AddMethod("updatePassword",self.updatePassword,[0,1,2,3,4,5,6])
+    ######### Question Time ############## This one in here or on login?
+    self.__AddMethod("updateValidation",self.updateValidation,[0,1,2,3,4,5,6])
+    #Audit Logs
+    self.__AddMethod("getAudit",self.getAuditLogs, [4,6])
+    #Staff Info 
+    self.__AddMethod("addStaff",self.addStaffByUsername,[5,6])
+    self.__AddMethod("getStaffInfo",self.getStaffInfoByUsername, [1,5,6])
+    self.__AddMethod("appendStaffInfo",self.appendStaffInfoByUsername, [5])
+    #Role Assignment
+    self.__AddMethod("getRole",self.getRoleBySID,[6])
+    self.__AddMethod("elevateRole",self.elevate, [6])
+    
+  def __AddMethod(self,FunctionName,Caller,Roles):
+    method = dict()
     method.update({"call":Caller, "rolesAccess":Roles})
     self.Methods.append({FunctionName:method})
 
-  def callMethod(methodname, myID, args):
+  def callMethod(methodname, username, args):
+    #If role allows perform method
     ReturnDict={}
     hasRoles = []
     myID = getUserID(username)
@@ -73,29 +89,30 @@ class Authenticator:  # <---------------------NEEDS TO BECOME A SERVER SUB-CLASS
     c.commit()
     c.close()
     return ReturnDict
+                        
 
-  def getAppointmentByPID(username, mc):
-#finds the next appointment for patient id
+  def getAppointmentByPID(self, username, mc):#finds the next appointment for patient id
     mc.execute("SELECT NextAppointment from Record where Username = " + 'username')
     results = mc.fetchall()
     res = results[0][0]
-    #print(res)
-    return results
- def appendAppointmentByPID(pid, key, value):
-#updates the next appointment for patient id
-#with key, value
+    print(res)
+
+  def appendAppointmentByPID(self,username, mc, c, value):
+    #updates the next appointment for patient id
+    #with key, value
     pID = getUserID(username, mc)
     mc.execute("UPDATE Record SET NextAppointment = %s WHERE UserID = %s",(value,pID))
     results = mc.fetchall()
-    return results
-  def writeToAppointmentByPID(username, mc):
+    
+    print(results)
+  def writeToAppointmentByPID(self,username, mc):
     #sends a request to create a new appointment for patient id
     pID = getUserID(username, mc)
     mc.execute("UPDATE Record SET NextAppointment = %s WHERE UserID = %s",(value,pID))
 
 
   #Patient record methods 
-  def getRecordByPID(username,mc):
+  def getRecordByPID(self,username,mc):
     #if patient has the same ward as current staff id
     #return a Record containing patients data
     pID=getUserID(username, mc)
@@ -106,7 +123,7 @@ class Authenticator:  # <---------------------NEEDS TO BECOME A SERVER SUB-CLASS
     results = mc.fetchall()
     
     return results
-  def appendRecordByPID(patientUser, staffUser, key, value,mc,c):
+  def appendRecordByPID(self,patientUser, staffUser, key, value,mc,c):
     #if patient has the same ward as current staff id
     #update field with value at key point
     pID=getUserID(patientUser,mc)
@@ -163,7 +180,7 @@ class Authenticator:  # <---------------------NEEDS TO BECOME A SERVER SUB-CLASS
     
     return result
     
-  def writeToRecordByPID(patientUser,staffUser,mc):
+  def writeToRecordByPID(self,patientUser,staffUser,mc):
     ######## Needs to get staffID from whoever is logged in ###########
     #if patient has the same ward as current staff id and staffid is the gp/doctors 
     #assert in my list of patients -- a good check but not authentication means
@@ -173,7 +190,7 @@ class Authenticator:  # <---------------------NEEDS TO BECOME A SERVER SUB-CLASS
     mc.execute("INSERT INTO record(UserId, Doctor) VALUES(%s,%s)",(pID, staffID))
 
   #Get user information
-  def getUserInfoByUsername(username, mc):
+  def getUserInfoByUsername(self,username, mc):
     mc.execute("Select surname, forename, dob, email from  personalinfo where username = '"+username+"'")
     results = mc.fetchall()
     for res in results:
@@ -182,7 +199,7 @@ class Authenticator:  # <---------------------NEEDS TO BECOME A SERVER SUB-CLASS
     
     return results
   # update user fields
-  def updateUsers(username, key, value,mc,c):
+  def updateUsers(self,username, key, value,mc,c):
     pID = getUserID(username, mc)
     if isinstance(key,str):
       key= key.lower()
@@ -206,7 +223,7 @@ class Authenticator:  # <---------------------NEEDS TO BECOME A SERVER SUB-CLASS
     
       return results
   #Update password
-  def updatePassword(username, newPassword,mc,c)
+  def updatePassword(self,username, newPassword,mc,c):
     mc.execute("select secretanswer from login where username = '" + username + "'")
     results = mc.fetchall()
     sec = results[0][0]
@@ -215,19 +232,19 @@ class Authenticator:  # <---------------------NEEDS TO BECOME A SERVER SUB-CLASS
     c.commit()
 
   #Update last vaidated time
-  def updateValidation(username,mc,c):
+  def updateValidation(self,username,mc,c):
     dt=datetime.now()
     now=dt.strftime("%Y-%m-%d %H:%M:%S")
     mc.execute("UPDATE login SET lastValidation = %s WHERE username = %s",(username, now))
     c.commit()
     
-  def addPrescription(username,value, mc,c):
+  def addPrescription(self,username,value, mc,c):
   # add Prescription
     pID = getUserID(username, mc)
     mc.execute("INSERT INTO prescription(UserID, Prescription,current) VALUES(%s,%s,%s)",(pID, value,True))
     c.commit()
   # All history
-  def getPrescriptionHistory(username,mc):  
+  def getPrescriptionHistory(self,username,mc):  
     pID = getUserID(username, mc)
     mc.execute("Select prescription from prescription where UserId ="+str(pID))
     results = mc.fetchall()
@@ -235,7 +252,7 @@ class Authenticator:  # <---------------------NEEDS TO BECOME A SERVER SUB-CLASS
       print(res)
     return results
   # current 
-  def getCurrentPrescription(username,mc):
+  def getCurrentPrescription(self,username,mc):
     pID = getUserID(username, mc)
     mc.execute("Select prescription from prescription where UserId = %s and current = %s",(pID,True))
     results = mc.fetchall()
@@ -244,12 +261,12 @@ class Authenticator:  # <---------------------NEEDS TO BECOME A SERVER SUB-CLASS
   ##########################
     return results
   # Conditions
-  def createCondition(username, value,mc,c): 
+  def createCondition(self,username, value,mc,c): 
     pID = getUserID(username, mc) 
     mc.execute("INSERT INTO cond(UserID, Cond, current) VALUES(%s,%s,%s)",(pID, value,True))
     c.commit()
   # All history
-  def getConditionHistory(username,mc):
+  def getConditionHistory(self,username,mc):
     pID = getUserID(username, mc)  
     mc.execute("Select cond from cond where UserId = "+str(pID))
     results = mc.fetchall()
@@ -257,7 +274,7 @@ class Authenticator:  # <---------------------NEEDS TO BECOME A SERVER SUB-CLASS
       print(res)
     return results
   # current 
-  def getCurrentCondition(username,mc):  
+  def getCurrentCondition(self,username,mc):  
     pID = getUserID(username, mc)
     mc.execute("Select cond from cond where UserId = %s and current = %s",(pID,True))
     results = mc.fetchall()
@@ -265,10 +282,10 @@ class Authenticator:  # <---------------------NEEDS TO BECOME A SERVER SUB-CLASS
       print(res)
     return results
   #Staff data methods
-  def addStaffByUsername(username,mc):
+  def addStaffByUsername(self,username,mc):
     mc.execute("INSERT INTO staff(username) VALUES ('"+uName+"')")
 
-  def getStaffInfoByUsername(username, mc):
+  def getStaffInfoByUsername(self,username, mc):
     #finds and returns the information related to the staff with Username
     mc.execute("SELECT * FROM staff INNER JOIN hours ON hours.staffid = staff.staffid where staff.username = '"+username+"'")
     results = mc.fetchall()
@@ -276,7 +293,7 @@ class Authenticator:  # <---------------------NEEDS TO BECOME A SERVER SUB-CLASS
       print(res)
     return results
 
-  def appendStaffInfoByUsername(username, mc, c, key, value):
+  def appendStaffInfoByUsername(self,username, mc, c, key, value):
     #if staff has the same ward as current staffID (managers only)
     #update field with value at key point
     if  isinstance(key, str):
@@ -303,7 +320,7 @@ class Authenticator:  # <---------------------NEEDS TO BECOME A SERVER SUB-CLASS
     
 
  #Audit logs method
-  def getAuditLogs(mc, num = 1000):
+  def getAuditLogs(self,mc, num = 1000):
     auditLogs = []
     mc.execute("SELECT * FROM audit ORDER BY TimeStamp DESC LIMIT " + str(num))
     results = mc.fetchall()
@@ -315,7 +332,7 @@ class Authenticator:  # <---------------------NEEDS TO BECOME A SERVER SUB-CLASS
     #Returns all audit logs
 
   #Role Assignment
-  def getRoleBySID(username,mc)
+  def getRoleBySID(self,username,mc):
     #returns the role of the staff id's account
     userid = getUserID(username,mc)
     mc.execute("select distinct roleID from roles where userID="+str(userID))
@@ -323,7 +340,7 @@ class Authenticator:  # <---------------------NEEDS TO BECOME A SERVER SUB-CLASS
     for res in results:
       print(res)
     return results
-  def elevate(username, mc, c, key, value, value2= None):
+  def elevate(self,username, mc, c, key, value, value2= None):
     #Alter the role assigned to new value of the Account with ID
     #0 = patient, 1 = receptionist, 2 = nurse, 3 = doctor
     #4 = regulator, 5 = managerial staff, 6 = Sytem admin]
@@ -343,14 +360,15 @@ class Authenticator:  # <---------------------NEEDS TO BECOME A SERVER SUB-CLASS
       c.commit()
       return results
 
-  def getUserID(Username, mc):
+  def getUserID(self,Username, mc):
     mc.execute("Select UserID from personalinfo where username = '"+Username+"'")
     results = mc.fetchall()
     res = results[0][0]
     return res
 
-  def getStaffID(Username,mc):
+  def getStaffID(self,Username,mc):
     mc.execute("Select staffID from staff where username = '"+Username+"'")
     results = mc.fetchall()
     res = results[0][0]
     return res
+

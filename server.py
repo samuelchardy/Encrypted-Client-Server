@@ -58,7 +58,7 @@ class Server():
     def authenticate(self,clientPublicKey):
       self.loggedin=False
       attempts=3 ####### this can be updates later. 
-      while not loggedin:
+      while not self.loggedin:
         attempts-=1
         msg = self.clientsocket.recv(1024)
         if(len(msg) == 294):
@@ -94,7 +94,7 @@ class Server():
               otpCode = otpCode.decode("ASCII")[:-1]
               print(self.OTP.checkCode(otpCode))
 			  
-              loggedin=True
+              self.loggedin=True
               logResult = "Welcome!"
               logCode = "1"
               if(not self.OTP.checkCode(otpCode)):
@@ -209,6 +209,9 @@ class Server():
       self.authenticate(clientPublicKey)
       #ACCESS TO MAIN FUNCTIONALITY IF YOU HAVE THE RGHT ROLE
       while self.loggedin:
+        print("")
+
+
 	# await user log off
  	# listen for commands call for authenticator
   def connectDB(self):
@@ -229,7 +232,7 @@ class Server():
     print("Server Active")
     self.emailAddr='363hospitalmfaservice@gmail.com'
     self.pw='InsecurePassword'
-    self.Authenticator=authenticator()
+    self.Authenticator=Authenticator()
     
     self.DB=self.connectDB
   #INITIALISE MESSAGEPARSER
