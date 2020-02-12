@@ -8,6 +8,7 @@ class crypto:
   privateKey = rsa
   publicKey = rsa
 
+
   #Generating Public and Private Keys
   def genKeys(self):
     global privateKey, publicKey
@@ -17,6 +18,7 @@ class crypto:
       backend = default_backend()
     )
     publicKey = privateKey.public_key()
+
 
   #Serialization and Storing of keys
   def storeKeys(self):
@@ -51,6 +53,7 @@ class crypto:
       encryption_algorithm = serialization.BestAvailableEncryption(b'mypassword')
     )
 
+
   def loadPublicKey(self):
     with open("publicKey.pem", "rb") as file:
       publicKey = serialization.load_pem_public_key(
@@ -62,12 +65,14 @@ class crypto:
       format = serialization.PublicFormat.SubjectPublicKeyInfo
     )
 
+
   def loadPublicKeyFromBytes(self, bytes):
     publicKey = serialization.load_pem_public_key(
       bytes,
       backend = default_backend()
     )
     return publicKey
+
 
   def loadPrivateKeyFromBytes(self, bytes):
     pKey = serialization.load_pem_private_key(
@@ -76,6 +81,7 @@ class crypto:
         backend = default_backend()
       )
     return pKey
+
 
   #Encyption and Decryption methods
   def encryptData(self, data):

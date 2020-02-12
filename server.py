@@ -29,7 +29,6 @@ class Server():
 
     def sendOTP(self,email="sampanda91@gmail.com"): #used during testing
       current_code = self.OTP.get()
-      
       #Generate email
       message = MIMEMultipart()
       message["Subject"] = "Your Verification Code"
@@ -78,7 +77,7 @@ class Server():
             username = splitData[0]
             self.username = username
             password = splitData[1]
-			#checkvalidation by ensuring password is  n number of alphanum set. 
+			      #checkvalidation by ensuring password is  n number of alphanum set. 
             print("username: " + username)
             print("password: " + password)
             if(self.LoginChecker(username,password)):#check against sql server for user/passowrd store#if fails, repeat login loo
@@ -142,7 +141,6 @@ class Server():
             password2 = splitData[6]
             secret = splitData[7]
 
-
             if(password != password2):
               completeMsg = messageParser.make(self.server.parser, self.c, clientPublicKey, "0", "Passwords don't match, please try again!")
               self.clientsocket.send(completeMsg)
@@ -151,7 +149,6 @@ class Server():
               message = messageParser.make(self.server.parser, self.c, clientPublicKey, "1", "signed up")
               self.signUp(username, password, secret, dob, surname, forename)
               self.clientsocket.send(message)
-      
           elif(command == "2"):
             print("\nsomething else")
         else:
@@ -184,9 +181,9 @@ class Server():
       c.execute("select secretanswer from login where username = '"+username+"'")
       res=c.fetchall()
       salt=res[0][0]
-        #adds salt to attempted password
+      #adds salt to attempted password
       saltedAttempt = password + salt
-        #compares
+      #compares
       if saltedAttempt == pword:
         print("Passwords Matched")
         d.close()
@@ -223,11 +220,11 @@ class Server():
       c.commit()
       c.close()	  
     
+
     #######TESTING##########################################
     def timeoutLogin(self, username):
       c = self.server.DB()
       mc = c.cursor()
-
       uID = Authenticator.getUserID(self.server.Authenticator, username)
       dt=datetime.now()
       now= dt.strftime("%Y-%m-%d %H:%M:%S")
@@ -240,7 +237,6 @@ class Server():
     def loginAttempt(self, username, success):
       c = self.server.DB()
       mc = c.cursor()
-
       uID = Authenticator.getUserID(self.server.Authenticator, username)
       dt=datetime.now()
       now= dt.strftime("%Y-%m-%d %H:%M:%S")
@@ -254,7 +250,6 @@ class Server():
       print("Checking past login attempts")
       c = self.server.DB()
       mc = c.cursor()
-
       clear = False
       uID = Authenticator.getUserID(self.server.Authenticator, username)
       mc.execute("SELECT success from audit where methodcalled = 'LoginAttempt' and userid = "+str(uID)+" order by timestamp desc limit 9")
@@ -332,14 +327,10 @@ class Server():
       else:
         print ("The insertion date is not older than 14 days")
         return False
-      #nothing is required
-    
-    ############################################################
 
 
     def run(self):
       print ("Connection from : "+ str(self.clientAddress))
-      #self.csocket.send(bytes("Hi, This is from Server..",'ASCII'))
       msg = ''
       self.clientsocket.send(self.publicKey)
       #GETTING CLIENTS PUBLIC KEY
@@ -363,7 +354,9 @@ class Server():
           cliInput = self.clientsocket.recv(1024)
           cliInput = crypto.decryptData(self.c, cliInput)
           command, dataLen, dataMethod, checksum = messageParser.parse(self.server.parser, cliInput)
-          print(dataMethod.decode("ASCII"))
+          dataMethod = dataMethod.decode("ASCII")
+          print(dataMethod)
+          #Authenticator.callMethod(dataMethod)
 
 	# await user log off
  	# listen for commands call for authenticator

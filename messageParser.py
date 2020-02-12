@@ -1,5 +1,5 @@
 import hashlib
-from Crypto2       import crypto
+from Crypto2 import crypto
 
 class messageParser:
   def parse(self, message):    
@@ -9,11 +9,11 @@ class messageParser:
     checksum = message[132:293]
     return str(command.decode("UTF-8")), dataLen, data, checksum
 	
+
   def make(self, cr, publicKey, command, data):
     dataPaddingLen = 3-len(data)
     #dataLength  = str(dataPaddingLen*'0') + str(len(data))
     dataLength = str(len(data)).zfill(3)
-
     dataPadding = 128-len(data)
     data = data + (' ' * dataPadding)
     msg = str(command) + dataLength + data
