@@ -32,7 +32,7 @@ serverPublicKey = crypto.loadPublicKeyFromBytes(cr, serverPublicKey)
 clientSocket.send(publicKey)
 
 # USER INTERFACE
-attempts = 0
+attempts = 2
 cliDict = {"getApp":"Get Appointment", "appApp":"Add Appointment", "writeApp":"Update Appointment", "getRec":"View Records", "appRec":"Add a Record", "writeRec":"Update a Record", "addPres":"Add a New Prescription", "getPresHist":"View Prescription History", "getCurPres":"View Current Prescriptions", "createCond":"Add New Condition", "getCondHist":"View Condition History", "getCurCond":"View Current Conditions", "getUserInfo":"View User Information", "updUser":"Update User Information", "updPass":"Update User Password", "updValid":"Update Validation", "getAudit":"View Audit Logs", "addStaff":"Add New Staff Member", "getStaffInfo":"View Staff Info", "appStaffInfo":"Update Staff Information", "getRoles":"View Account Roles", "elevateRole":"Elevate Role", "getUserID":"Get User By ID", "getStaffID":"Get Staff By ID"}
 
 
@@ -97,14 +97,14 @@ while True:
                             clientSocket.send(userChoice)
 
                 else:
-                    attempts += 1
+                    attempts -= 1
             else:
                 print("Error: Don't put commas in the password!")
-                attempts += 1
+                attempts -= 1
                 time.sleep(3.5)
         else:
             print("Error: Don't put commas in the username!")
-            attempts += 1
+            attempts -= 1
             time.sleep(3.5)
 
     elif(choice == "2"):
@@ -168,12 +168,12 @@ while True:
         print(data.decode("UTF-8"))
         time.sleep(3.5)
 
-    if(attempts == 3):
-        attempts = 0
-        for i in range(0, 15):
+    if(attempts < 0):
+        attempts += 1
+        for i in range(0, 60):
             os.system("cls")
             print("You have attempted to log in and fail multiple times, please wait " +
-                  str(15-i) + " seconds before trying again!")
+                  str(60-i) + " seconds before trying again!")
             time.sleep(1)
 
 clientSocket.close()

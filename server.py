@@ -1,4 +1,4 @@
-import socket, threading, json, hashlib, smtplib, ssl, pyotp, mysql.connector
+import socket, threading, json, hashlib, smtplib, ssl, pyotp, mysql.connector, os, time
 from Crypto2           		import crypto
 from messageParser     		import messageParser
 from Verify            		import Verify
@@ -45,7 +45,6 @@ class Server():
       context = ssl.create_default_context()
       print(text)
       
-      
       try:
         s=smtplib.SMTP(host='smtp.gmail.com', port = 587)
         s.starttls(context = context)
@@ -60,9 +59,8 @@ class Server():
     
     def authenticate(self,clientPublicKey):
       self.loggedin=False
-      attempts=3 ####### this can be updates later. 
+      attempts=2 ####### this can be updates later. 
       while not self.loggedin:
-        attempts-=1
         msg = self.clientsocket.recv(1024)
         if(len(msg) == 294):
           #DECRYPT DATA
@@ -78,6 +76,7 @@ class Server():
             #harvest
             splitData = str.split(data.decode("ASCII"),",")
             username = splitData[0]
+            self.username = username
             password = splitData[1]
 			#checkvalidation by ensuring password is  n number of alphanum set. 
             print("username: " + username)
@@ -97,20 +96,30 @@ class Server():
               otpCode = otpCode.decode("ASCII")[:-1]
               print(self.OTP.checkCode(otpCode))
 			  
-              self.loggedin=True
-              logResult = "Welcome!"
-              logCode = "1"
-              self.username = username
+              logResult = ""
+              logCode = ""
               if(not self.OTP.checkCode(otpCode)):
                 logResult = "Incorrect code, please try again!"
                 logCode = "0"
                 self.loggedin = False
+                self.username = username
+                self.loginAttempt(username, False)
+                attempts-=1
+              else:
+                self.loggedin=True
+                logResult = "Welcome!"
+                logCode = "1"
+                self.username = username
+                self.loginAttempt(username, True)
+
               print(logCode)
               logRes = messageParser.make(self.server.parser, self.c, clientPublicKey, logCode, logResult)
               self.clientsocket.send(logRes)
             else:
               failMsg = messageParser.make(self.server.parser, self.c, clientPublicKey, "0", "Incorrect username or password!")
               self.clientsocket.send(failMsg)
+              self.loginAttempt(username, False)
+              attempts-=1
 			 
           elif(command == "B"):
             #user is signing up here
@@ -131,6 +140,7 @@ class Server():
             if(password != password2):
               completeMsg = messageParser.make(self.server.parser, self.c, clientPublicKey, "0", "Passwords don't match, please try again!")
               self.clientsocket.send(completeMsg)
+              attempts-=1
             else:
               message = messageParser.make(self.server.parser, self.c, clientPublicKey, "1", "signed up")
               self.signUp(username, password, secret, dob, surname, forename)
@@ -140,14 +150,19 @@ class Server():
             print("\nsomething else")
         else:
           print("Error: Data length value is too large.")
+          attempts-=1
+
         if attempts<0:
-          time.sleep(60)
+          self.timeoutLogin(self.username)
+          if not self.checkLogins(self.username):
+            self.alertAdmin(self.username)
           attempts+=1
           delay=60
           for i in range(delay):
-            os.system("cls")
-            print("You have attempted to log in and fail multiple times, please wait an extra " + str(delay-i) + " seconds before trying again!")
+            #os.system("cls")
+            #print("You have attempted to log in and fail multiple times, please wait an extra " + str(delay-i) + " seconds before trying again!")
             time.sleep(1)
+          print("Timeout Over")
       #here we're logged in after this loop so well
       #go to give options for authentication. 
     
@@ -174,6 +189,8 @@ class Server():
         d.close()
         print("Failed Login") 
       return False
+
+
     def getEmailforUser(self, username):
       try: 
         c= self.server.DB()
@@ -183,6 +200,7 @@ class Server():
         return results[0][0]
       except:
         return null
+
 
     def signUp(self, username, password, secret, dob, surname, forename):
       dt=datetime.now()
@@ -198,8 +216,95 @@ class Server():
       mc.execute("INSERT INTO roles(UserID,RoleID) Values(%s,%s)",(userID,0))
       c.commit()
       c.close()	  
-	
     
+    #######TESTING##########################################
+    def timeoutLogin(self, username):
+      c = self.server.DB()
+      mc = c.cursor()
+
+      uID = Authenticator.getUserID(self.server.Authenticator, username)
+      dt=datetime.now()
+      now= dt.strftime("%Y-%m-%d %H:%M:%S")
+      mc.execute("INSERT INTO audit(userid, methodcalled, success, timestamp) VALUES(%s,%s,%s,%s)",(uID,"Timeout",False,now))
+      c.commit()
+      c.close()
+      print("Logged timeout")
+
+
+    def loginAttempt(self, username, success):
+      c = self.server.DB()
+      mc = c.cursor()
+
+      uID = Authenticator.getUserID(self.server.Authenticator, username)
+      dt=datetime.now()
+      now= dt.strftime("%Y-%m-%d %H:%M:%S")
+      mc.execute("INSERT INTO audit(userid, methodcalled, success, timestamp) VALUES(%s,%s,%s,%s)",(uID,"LoginAttempt",success,now))
+      c.commit()
+      print("Logged login attempt")
+      c.close()
+
+
+    def checkLogins(self, username):
+      print("Checking past login attempts")
+      c = self.server.DB()
+      mc = c.cursor()
+
+      clear = False
+      uID = Authenticator.getUserID(self.server.Authenticator, username)
+      mc.execute("SELECT success from audit where methodcalled = 'LoginAttempt' and userid = "+str(uID)+" order by timestamp desc limit 9")
+      results = mc.fetchall()
+      for res in results:
+        if res[0] == True:
+          clear = True
+          break
+      c.close()
+      return clear
+
+
+    def alertAdmin(self, username):
+      print("Alerting sys admins of suspicious behaviour")
+      #@title Email OTP to Recipient
+      c = self.server.DB()
+      mc = c.cursor()
+      #Hardcoded - hospital account details
+      address = '363hospitalmfaservice@gmail.com'
+      pw = 'InsecurePassword'
+        
+      #Get these from db
+      mc.execute("SELECT email from personalinfo inner join roles on roles.userid =personalinfo.userid where roleid=6")
+      results = mc.fetchall()
+      recipients = []
+      for res in results:
+        recipients.append(res[0])
+      #recipients.append('george.f.h.chandler@gmail.com')
+      #recipients.append('theanonymousfreakyguy@googlemail.com')
+      c.close()
+        
+      #Generate email
+      message = MIMEMultipart()
+      message["Subject"] = "Multiple access attempts"
+      message["From"] = address
+      message["To"] = ", ".join(recipients)
+
+      text = "The user: " + username + " has failed to login 9 times. Please execute order 66."
+
+      msgText = MIMEText(text, "plain")
+      message.attach(msgText)
+
+      #Connect to SMTP server and send email
+      context = ssl.create_default_context()
+      try:
+        s = smtplib.SMTP(host='smtp.gmail.com', port = 587)
+        s.starttls(context = context)
+        s.login(address, pw)
+        s.sendmail(address, recipients, message.as_string())
+      except Exception as e:#https://docs.google.com/document/d/1ccYoBdUBAxtwKJIUg5GfgUYkHVz3ZcLgdhttps://docs.google.com/document/d/1ccYoBdUBAxtwKJIUg5GfgUYkHVz3ZcLgd73bXU3QRFM/edit?usp=sharing73bXU3QRFM/edit?usp=sharing
+        print(e)
+      finally:
+        s.quit()
+    ############################################################
+
+
     def run(self):
       print ("Connection from : "+ str(self.clientAddress))
       #self.csocket.send(bytes("Hi, This is from Server..",'ASCII'))
@@ -225,8 +330,8 @@ class Server():
         while True:
           cliInput = self.clientsocket.recv(1024)
           cliInput = crypto.decryptData(self.c, cliInput)
-          print(cliInput)
-
+          command, dataLen, dataMethod, checksum = messageParser.parse(self.server.parser, cliInput)
+          print(dataMethod.decode("ASCII"))
 
 	# await user log off
  	# listen for commands call for authenticator
@@ -237,6 +342,7 @@ class Server():
                                 database="threesixthreedb")
     return conn
  
+
   def __init__(self,port=9999):
     self.serverSocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     self.serverSocket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
@@ -251,11 +357,10 @@ class Server():
     self.DB=self.connectDB
     self.Authenticator=Authenticator(self.connectDB)
     
-    
-  #INITIALISE MESSAGEPARSER
+    #INITIALISE MESSAGEPARSER
     self.parser = messageParser()
 
-  #PASSWORD POLICY
+    #PASSWORD POLICY
     self.policy = PasswordPolicy.from_names(
       length=24,  		# min length: 8
       uppercase=0,  	# need min. 2 uppercase letters
@@ -265,8 +370,6 @@ class Server():
   )
 
 
-  
-  
   def run(self):
     while True:
       self.serverSocket.listen(1)
