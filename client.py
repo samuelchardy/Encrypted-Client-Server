@@ -63,38 +63,40 @@ while True:
                 command, dataLen, otpData, checksum = messageParser.parse(
                     parser, otpResponse)
                 print(otpData.decode("UTF-8"))
+                newCommand = 0
 
-                if(command == "1"):
+                if(command == "X"):
                     enteredCode = input()
                     enteredCode = enteredCode.strip()
                     otpReply = messageParser.make(
                         parser, cr, serverPublicKey, "A", enteredCode)
                     clientSocket.send(otpReply)
-
                     newResponse = clientSocket.recv(1024)
                     newResponse = crypto.decryptData(cr, newResponse)
-                    newCommand, dataLen, data, checksum = messageParser.parse(
-                        parser, newResponse)
+                    newCommand, dataLen, data, checksum = messageParser.parse(parser, newResponse)
                     print(data.decode("ASCII"))
+                elif (command == "Z"):
+                    newCommand = "1"
 
-                    if(newCommand == "1"):
-                        cliOpts = clientSocket.recv(1024)
-                        cliOpts = crypto.decryptData(cr, cliOpts)
-                        newCommand, dataLen, cli, checksum = messageParser.parse(parser, cliOpts)
-                        cli = cli.decode("ASCII")
-                        cli = cli.split(",")
+                if(newCommand == "1"):
+                    cliOpts = clientSocket.recv(1024)
+                    cliOpts = crypto.decryptData(cr, cliOpts)
+                    newCommand, dataLen, cli, checksum = messageParser.parse(parser, cliOpts)
+                    cli = cli.decode("ASCII")
+                    cli = cli.split(",")
 
-                        while True:
-                            os.system("cls")
-                            print("------------------------------")
-                            for i in range(0, len(cli)-1):
-                                print(str(i+1) + ": " + cliDict[cli[i]])
-                            print("------------------------------")
-                            # Only print what the user is able to do...
-                            enteredCode = input()
-                            sendData = cli[int(enteredCode)-1]
-                            userChoice = messageParser.make(parser, cr, serverPublicKey, "A", sendData)
-                            clientSocket.send(userChoice)
+                    while True:
+                        os.system("cls")
+                        print("------------------------------")
+                        for i in range(0, len(cli)-1):
+                            print(str(i+1) + ": " + cliDict[cli[i]])
+                        print("------------------------------")
+                        # Only print what the user is able to do...
+                        enteredCode = input()
+                        sendData = cli[int(enteredCode)-1]
+                        userChoice = messageParser.make(parser, cr, serverPublicKey, "A", sendData)
+                        clientSocket.send(userChoice)
+
 
                 else:
                     attempts -= 1

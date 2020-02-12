@@ -83,38 +83,44 @@ class Server():
             print("password: " + password)
             if(self.LoginChecker(username,password)):#check against sql server for user/passowrd store#if fails, repeat login loo
               print("\ntrying to log in")#SEND MESSAGE TELLING THEM TO ENTER OTP CODE
-              otpMsg = messageParser.make(self.server.parser, self.c, clientPublicKey, "1", "Please check your email and enter the code we have sent you!")
-              self.clientsocket.send(otpMsg)
-		
-              self.sendOTP(self.getEmailforUser(username)) # not declared in memory so cant be listened for.     <--------------get user Email
-              print("sent OTP")
-			        #RECIEVE OTP CODE
-              otpCode = self.clientsocket.recv(1024)
-              otpCode = crypto.decryptData(self.c, otpCode)
-              command, dataLen, otpCode, checksum = messageParser.parse(self.server.parser, otpCode)
-              print(otpCode.decode("ASCII"))
-              otpCode = otpCode.decode("ASCII")[:-1]
-              print(self.OTP.checkCode(otpCode))
-			  
-              logResult = ""
-              logCode = ""
-              if(not self.OTP.checkCode(otpCode)):
-                logResult = "Incorrect code, please try again!"
-                logCode = "0"
-                self.loggedin = False
-                self.username = username
-                self.loginAttempt(username, False)
-                attempts-=1
-              else:
-                self.loggedin=True
-                logResult = "Welcome!"
-                logCode = "1"
-                self.username = username
-                self.loginAttempt(username, True)
 
-              print(logCode)
-              logRes = messageParser.make(self.server.parser, self.c, clientPublicKey, logCode, logResult)
-              self.clientsocket.send(logRes)
+              if(self.revalidatedUser(username)):  
+                otpMsg = messageParser.make(self.server.parser, self.c, clientPublicKey, "X", "Please check your email and enter the code we have sent you!")
+                self.clientsocket.send(otpMsg)
+      
+                self.sendOTP(self.getEmailforUser(username)) # not declared in memory so cant be listened for.     <--------------get user Email
+                print("sent OTP")
+                #RECIEVE OTP CODE
+                otpCode = self.clientsocket.recv(1024)
+                otpCode = crypto.decryptData(self.c, otpCode)
+                command, dataLen, otpCode, checksum = messageParser.parse(self.server.parser, otpCode)
+                print(otpCode.decode("ASCII"))
+                otpCode = otpCode.decode("ASCII")[:-1]
+                print(self.OTP.checkCode(otpCode))
+          
+                logResult = ""
+                logCode = ""
+                if(not self.OTP.checkCode(otpCode)):
+                  logResult = "Incorrect code, please try again!"
+                  logCode = "0"
+                  self.loggedin = False
+                  self.username = username
+                  self.loginAttempt(username, False)
+                  attempts-=1
+                else:
+                  self.loggedin=True
+                  logResult = "Welcome!"
+                  logCode = "1"
+                  self.username = username
+                  self.loginAttempt(username, True)
+
+                print(logCode)
+                logRes = messageParser.make(self.server.parser, self.c, clientPublicKey, logCode, logResult)
+                self.clientsocket.send(logRes)
+              else:
+                loginMsg = messageParser.make(self.server.parser, self.c, clientPublicKey, "Z", "Loged In")
+                self.clientsocket.send(loginMsg)
+                self.loggedin=True
             else:
               failMsg = messageParser.make(self.server.parser, self.c, clientPublicKey, "0", "Incorrect username or password!")
               self.clientsocket.send(failMsg)
@@ -182,7 +188,7 @@ class Server():
       saltedAttempt = password + salt
         #compares
       if saltedAttempt == pword:
-        print("Login Successful")
+        print("Passwords Matched")
         d.close()
         return True
       else:
@@ -302,6 +308,32 @@ class Server():
         print(e)
       finally:
         s.quit()
+
+
+    def revalidatedUser(self, user):
+      c = self.server.DB()
+      mc = c.cursor()
+      mc.execute("SELECT LastValidation from login where username = '"+user+"'")
+      insertion_date = mc.fetchall()
+      dt = datetime.now()
+      
+      insertion_date = datetime.strptime(str(insertion_date[0][0]), "%Y-%m-%d %H:%M:%S")
+      cTime =dt.strftime("%Y-%m-%d %H:%M:%S")
+      cTime = datetime.strptime(str(cTime), "%Y-%m-%d %H:%M:%S")
+      print(cTime)
+      print(insertion_date)
+      time_between_insertion = cTime - insertion_date
+
+      if  time_between_insertion.days>14:
+        print ("The insertion date is older than 14 days")
+        return True
+        mc.execute("update login set LastValidation = %s where username = %s",(cTime, username))
+        c.commit()
+      else:
+        print ("The insertion date is not older than 14 days")
+        return False
+      #nothing is required
+    
     ############################################################
 
 
