@@ -81,15 +81,24 @@ class Server():
           print("TOKEN: " + str(token) + "\nCOMMAND: " + str(command) + "\nDATA LEN: " + str(dataLen) + "\nDATA: " + str(data) + "\nCHECKSUM: " + str(checksum))
 
           if newToken != "roguevalue0000000000000000000000":
+              print("------------------------------------")
+              print("OLD TOKEN: ",oldToken)
+              print("RCV TOKEN: ",token)
+              print("------------------------------------")
               if token == oldToken:
                   oldToken = newToken
                   acceptToken = True
+              else:
+                  print("TOKENS DID NOT MATCH")
+                  print("OLD TOKEN: ",oldToken)
+                  print("RCV TOKEN: ",token)
           else:
-              acceptToken = True
-
+              acceptToken = True #if token is rogue value, i.e. no token has been generated yet
+          print("ACCEPT TOKEN: ", acceptToken)
         if(int(dataLen) < 255 and acceptToken):
 
           newToken = self.createToken()
+          print("NEW TOKEN: ",newToken)
 
           if(command == "A"):
             
@@ -103,7 +112,7 @@ class Server():
             print("password: " + password)
             if(self.LoginChecker(username,password)):#check against sql server for user/passowrd store#if fails, repeat login loo
               print("\ntrying to log in")#SEND MESSAGE TELLING THEM TO ENTER OTP CODE
-              otpMsg = messageParser.make(self.server.parser, self.c, newtoken, clientPublicKey, "1", "Please check your email and enter the code we have sent you!")
+              otpMsg = messageParser.make(self.server.parser, self.c, clientPublicKey, str(newToken), "1", "Please check your email and enter the code we have sent you!")
               self.clientsocket.send(otpMsg)
 		
               self.sendOTP(self.getEmailforUser(username)) # not declared in memory so cant be listened for.     <--------------get user Email
@@ -112,8 +121,18 @@ class Server():
               otpCode = self.clientsocket.recv(1024)
               otpCode = crypto.decryptData(self.c, otpCode)
               token, command, dataLen, otpCode, checksum = messageParser.parse(self.server.parser, otpCode)
+
+              print("------------------------------")
+              print("TOKEN: ",token)
+              print("COMMAND: ",str(command))
+              print("DATA LENGTH: ",dataLen)
+              print("DATA: ",data)
+              print("CHECKSUM: ",checksum)
+              print("------------------------------")
+
               print(otpCode.decode("ASCII"))
-              otpCode = otpCode.decode("ASCII")[:-1]
+              otpCode = otpCode.decode("ASCII")
+              print(otpCode)
               print(self.OTP.checkCode(otpCode))
 			  
               self.loggedin=True
@@ -123,10 +142,10 @@ class Server():
                 logResult = "Incorrect code, please try again!"
                 logCode = "0"
               print(logCode)
-              logRes = messageParser.make(self.server.parser, self.c, newToken, clientPublicKey, logCode, logResult)
+              logRes = messageParser.make(self.server.parser, self.c, clientPublicKey, newToken, logCode, logResult)
               self.clientsocket.send(logRes)
             else:
-              failMsg = messageParser.make(self.server.parser, self.c, newToken, clientPublicKey, "0", "Incorrect username or password!")
+              failMsg = messageParser.make(self.server.parser, self.c, clientPublicKey, newToken, "0", "Incorrect username or password!")
               self.clientsocket.send(failMsg)
 			 
           elif(command == "B"):
@@ -145,10 +164,10 @@ class Server():
 
 
             if(password != password2):
-              completeMsg = messageParser.make(self.server.parser, self.c, clientPublicKey, newToken, "0", "Passwords don't match, please try again!")
+              completeMsg = messageParser.make(self.server.parser, self.c, clientPublicKey, newToken.encode("ASCII"), "0", "Passwords don't match, please try again!")
               self.clientsocket.send(completeMsg)
             else:
-              message = messageParser.make(self.server.parser, self.c, clientPublicKey, newToken, "1", "signed up")
+              message = messageParser.make(self.server.parser, self.c, clientPublicKey, newToken.encode("ASCII"), "1", "signed up")
               self.signUp(username, password, secret, dob, surname, forename)
               self.clientsocket.send(message)
       
@@ -237,8 +256,10 @@ class Server():
       clientPublicKey = crypto.loadPublicKeyFromBytes(self.c, clientPublicKey) #<---
       self.authenticate(clientPublicKey)
       #ACCESS TO MAIN FUNCTIONALITY IF YOU HAVE THE RGHT ROLE
-      while self.loggedin:
-        print("")
+
+
+      #while self.loggedin:
+        #print("")
 
 
 	# await user log off

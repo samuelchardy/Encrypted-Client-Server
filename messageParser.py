@@ -3,13 +3,18 @@ from Crypto2       import crypto
 
 class messageParser:
   def parse(self, message):    
-    token = message[0:31]
+    token = message[0:32]
+    print("TOKEN: ",token)
     command = bytes([message[32]])
-    dataLen = message[33:36]
+    print("COMMAND: ",str(command))
+    dataLen = message[34:36]
+    print("DATA LENGTH: ",dataLen)
     data = message[36:int(dataLen)+36]
+    print("DATA: ",data)
     checksum = message[164:325]
+    print("CHECKSUM: ",checksum)
 
-    return str(token), str(command.decode("ASCII")), dataLen, data, checksum
+    return str(token.decode("ASCII")), str(command.decode("ASCII")), dataLen, data, checksum
 	
   def make(self, cr, publicKey, token, command, data):
     dataPaddingLen = 3-len(data)
@@ -22,9 +27,12 @@ class messageParser:
     checksum = hashlib.md5(bytes(msg.encode("ASCII")))
     msg = str(msg) + str(checksum)
 
+    print("MESSAGE : ",msg)
+
     encryptedMsg = crypto.encryptData(cr, msg, publicKey)
     return encryptedMsg
 
+    
 
   def checkData(self, data):
     if("," not in data):

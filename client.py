@@ -61,8 +61,14 @@ while True:
                 # RECIEVE OTP MESSAGE
                 otpResponse = clientSocket.recv(1024)
                 otpResponse = crypto.decryptData(cr, otpResponse)
-                command, dataLen, otpData, checksum = messageParser.parse(
+
+                print("------------------------------")
+                print("OTP RESPONSE: ",otpResponse)
+                print("------------------------------")
+
+                token, command, dataLen, otpData, checksum = messageParser.parse(
                     parser, otpResponse)
+                print("Token when received and parsed: ",token)
                 print(otpData.decode("UTF-8"))
 
                 if(command == "1"):
