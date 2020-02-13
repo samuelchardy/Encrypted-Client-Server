@@ -147,7 +147,7 @@ class Server():
               attempts-=1
             else:
               message = messageParser.make(self.server.parser, self.c, clientPublicKey, "1", "signed up")
-              self.signUp(username, password, secret, dob, surname, forename)
+              self.signUp(username, password, secret, dob, surname, forename, email)
               self.clientsocket.send(message)
           elif(command == "2"):
             print("\nsomething else")
@@ -205,14 +205,14 @@ class Server():
         return null
 
 
-    def signUp(self, username, password, secret, dob, surname, forename):
+    def signUp(self, username, password, secret, dob, surname, forename, email):
       dt=datetime.now()
       validTime=dt.strftime("%Y-%m-%d %H:%M:%S")
       password += secret
       c= self.server.DB()
       mc = c.cursor()
       mc.execute("INSERT INTO login VALUES(%s,%s,%s,%s)",(username,password,secret,validTime))
-      mc.execute("INSERT INTO personalinfo(Username,Email,Surname,Forename,DOB) VALUES(%s,%s,%s,%s,%s)",(username,username,surname,forename,dob))
+      mc.execute("INSERT INTO personalinfo(Username,Email,Surname,Forename,DOB) VALUES(%s,%s,%s,%s,%s)",(username,email,surname,forename,dob))
       mc.execute("SELECT UserID from personalinfo where Username = '"+username+"'")
       results = mc.fetchall()
       userID = results[0][0] 
