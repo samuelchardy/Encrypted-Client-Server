@@ -1,4 +1,4 @@
-
+from inspect import signature
 from datetime import datetime
 class Authenticator:  # <---------------------NEEDS TO BECOME A SERVER SUB-CLASS
     # This is to be the only method any given role can access then acess, it has
@@ -12,7 +12,7 @@ class Authenticator:  # <---------------------NEEDS TO BECOME A SERVER SUB-CLASS
     c=self.connectDB()# will become self.server.DB()
     res = -1
     mc = c.cursor()
-    mc.execute("Select UserID from personalinfo where username = '"+Username+"'")
+    mc.execute("Select UserID from personalinfo where username = "+str(Username[0]))
     results = mc.fetchall()
     if mc.rowcount>0:
       res = results[0][0]
@@ -24,7 +24,7 @@ class Authenticator:  # <---------------------NEEDS TO BECOME A SERVER SUB-CLASS
     c= self.connectDB()# will become self.server.DB()
     res = -1    
     mc = c.cursor()
-    mc.execute("Select staffID from staff where username = '"+Username+"'")
+    mc.execute("Select staffID from staff where username = "+str(Username[0]))
     results = mc.fetchall()
     if mc.rowcount>0:
       res = results[0][0]
@@ -48,7 +48,7 @@ class Authenticator:  # <---------------------NEEDS TO BECOME A SERVER SUB-CLASS
     else:
         Authenticator.__instance = self
     self.Methods=dict()
-    self.connectDB=self.ConnectDB
+    self.connectDB=ConnectDB
     self.LastAuditLogHash=LastAuditLogHash
     #Appointments
     self.__AddMethod("getApp",self.getAppointmentByPID, [0,1])
@@ -89,8 +89,15 @@ class Authenticator:  # <---------------------NEEDS TO BECOME A SERVER SUB-CLASS
 
   def __AddMethod(self,FunctionName,Caller,Roles):
     method = dict()
-    method.update({"call":Caller, "rolesAccess":Roles})
+    method.update({"call":Caller,"Args": list(signature(Caller).parameters.keys()),"rolesAccess":Roles})
     self.Methods.update({FunctionName:method})
+
+
+  def listMethodDetails(self,methodName):
+    print(methodName)
+    print( "In : "+",".join(list(self.Methods.keys())))
+    
+    return self.Methods.get(str(methodName)).get("Args")
 
 
   def callMethod(self, methodName, username, args = None):
@@ -108,11 +115,11 @@ class Authenticator:  # <---------------------NEEDS TO BECOME A SERVER SUB-CLASS
     ##NamesMethods=print(a[methodName] for a in [set(a.roles)&set(hasRoles).len()>0 for a in Methods]) <-- Steve's weird shit
     success = False
     if len(list(set(self.Methods.get(methodName).get("rolesAccess")) & set(hasRoles)))>=1:
-      ReturnDict.update({"Values":self.Methods.get(methodName).get("call")(args), "Success":True})
-      success = True
-      return self.Methods.get(methodName).get("call")(args)
+      ReturnDict.update({"Values":self.Methods.get(methodName).get("call")(**dict(zip(self.Methods.get(str(methodName)).get("Args"),args), "Success":True})
+      #success = True
+      #return self.Methods.get(methodName).get("call")(arg in args)
     else: 
-      ReturnDict.update({"Values":self.Methods.get(methodName).get("call")(args), "Success":False})
+      ReturnDict.update({"Values":{}, "Success":False})
     dt=datetime.now()
     validTime=dt.strftime("%Y-%m-%d %H:%M:%S")
     sub = args[0]
@@ -120,8 +127,7 @@ class Authenticator:  # <---------------------NEEDS TO BECOME A SERVER SUB-CLASS
       sID = self.getUserID(sub)
     else:
       sID = None
-    self.server.hashPreviousLog
-    mc.execute("INSERT INTO audit(UserID, methodCalled, Success, UserSubject, TimeStamp,PreviousHash) VALUES (%s,%s,%s,%s,%s,%s)", (myID, methodname, success, sID, validTime,self.LastAuditLogHash()))
+    mc.execute("INSERT INTO audit(UserID, methodCalled, Success, UserSubject, TimeStamp,PreviousHash) VALUES (%s,%s,%s,%s,%s,%s)", (myID, methodName, str(ReturnDict.get("Success")), sID, validTime, self.LastAuditLogHash()))
     c.commit()
     c.close()
     return ReturnDict
@@ -257,14 +263,9 @@ class Authenticator:  # <---------------------NEEDS TO BECOME A SERVER SUB-CLASS
     c= self.connectDB()# will become self.server.DB()
     mc = c.cursor()
     pID = self.getUserID(patientUser)
-<<<<<<< HEAD
-    staffID = self.getStaffID(staffUser)
-    mc.execute("INSERT INTO record(UserId, Doctor) VALUES(%s,%s)",(pID, staffID))
-=======
     staffID = getStaffID(staffUser)
     if staffID>0 and pID>0:
       mc.execute("INSERT INTO record(UserId, Doctor) VALUES(%s,%s)",(pID, staffID))
->>>>>>> b5a8f5d89000d700805436842dfe8ad9abcd1a12
     c.close()
 
 
@@ -477,7 +478,7 @@ class Authenticator:  # <---------------------NEEDS TO BECOME A SERVER SUB-CLASS
     
 
  #Audit logs method
-  def getAuditLogs(self, num = 1000):
+  def getAuditLogs(self, num):
     c = self.connectDB()# will become self.server.DB()
     mc = c.cursor()
     auditLogs = []
@@ -496,12 +497,12 @@ class Authenticator:  # <---------------------NEEDS TO BECOME A SERVER SUB-CLASS
   #Role Assignment
   def getRoleBySID(self, username):
     #returns the role of the staff id's account
-    c= self.connectDB()# will become self.server.DB()
+    c = self.connectDB()# will become self.server.DB()
     mc = c.cursor()
     result=[]
     userid = self.getUserID(username)
     if userid>0:
-      c.execute("select distinct roleID from roles where userID="+str(userid))
+      mc.execute("select distinct roleID from roles where userID="+str(userid))
       results = mc.fetchall()
       for res in results:
         result.append(res[0])

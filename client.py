@@ -33,7 +33,33 @@ clientSocket.send(publicKey)
 
 # USER INTERFACE
 attempts = 2
-cliDict = {"getApp":"Get Appointment", "appApp":"Add Appointment", "writeApp":"Update Appointment", "getRec":"View Records", "appRec":"Add a Record", "writeRec":"Update a Record", "addPres":"Add a New Prescription", "getPresHist":"View Prescription History", "getCurPres":"View Current Prescriptions", "createCond":"Add New Condition", "getCondHist":"View Condition History", "getCurCond":"View Current Conditions", "getUserInfo":"View User Information", "updUser":"Update User Information", "updPass":"Update User Password", "updValid":"Update Validation", "getAudit":"View Audit Logs", "addStaff":"Add New Staff Member", "getStaffInfo":"View Staff Info", "appStaffInfo":"Update Staff Information", "getRoles":"View Account Roles", "elevateRole":"Elevate Role", "getUserID":"Get User By ID", "getStaffID":"Get Staff By ID"}
+
+cliDict = {
+    "getApp":"Get Appointment",
+    "appApp":"Add Appointment",
+    "writeApp":"Update Appointment",
+    "getRec":"View Records",
+    "appRec":"Add a Record",
+    "writeRec":"Update a Record",
+    "addPres":"Add a New Prescription",
+    "getPresHist":"View Prescription History",
+    "getCurPres":"View Current Prescriptions",
+    "createCond":"Add New Condition",
+    "getCondHist":"View Condition History",
+    "getCurCond":"View Current Conditions",
+    "getUserInfo":"View User Information",
+    "updUser":"Update User Information",
+    "updPass":"Update User Password",
+    "updValid":"Update Validation",
+    "getAudit":"View Audit Logs",
+    "addStaff":"Add New Staff Member",
+    "getStaffInfo":"View Staff Info",
+    "appStaffInfo":"Update Staff Information",
+    "getRoles":"View Account Roles",
+    "elevateRole":"Elevate Role",
+    "getUserID":"Get User By ID", 
+    "getStaffID":"Get Staff By ID",
+    }
 
 
 while True:
@@ -97,6 +123,18 @@ while True:
                         userChoice = messageParser.make(parser, cr, serverPublicKey, "A", sendData)
                         clientSocket.send(userChoice)
 
+                        argsForInput = clientSocket.recv(1024)
+                        argsForInput = crypto.decryptData(cr, argsForInput)
+                        newCommand, dataLen, args, checksum = messageParser.parse(parser, argsForInput)
+                        args = args.decode("ASCII")
+
+                        splitArgs = args.split(", ")
+                        userArgInputs = []
+                        for arg in splitArgs:
+                            print(arg + ": ")
+                            userArgInputs.append(input())
+                        dataMsg = messageParser.make(parser, cr, serverPublicKey, "A", ", ".join(userArgInputs))
+                        clientSocket.send(dataMsg)
 
                 else:
                     attempts -= 1

@@ -120,6 +120,8 @@ class Server():
                 loginMsg = messageParser.make(self.server.parser, self.c, clientPublicKey, "Z", "Loged In")
                 self.clientsocket.send(loginMsg)
                 self.loggedin=True
+                self.loginAttempt(username, True)
+
             else:
               failMsg = messageParser.make(self.server.parser, self.c, clientPublicKey, "0", "Incorrect username or password!")
               self.clientsocket.send(failMsg)
@@ -355,9 +357,21 @@ class Server():
           cliInput = self.clientsocket.recv(1024)
           cliInput = crypto.decryptData(self.c, cliInput)
           command, dataLen, dataMethod, checksum = messageParser.parse(self.server.parser, cliInput)
-          dataMethod = dataMethod.decode("ASCII")
+          
+          dataMethod = dataMethod.decode("ASCII").strip()
+          args=self.server.Authenticator.listMethodDetails(dataMethod)
           print(dataMethod)
+          cliMsg = messageParser.make(self.server.parser, self.c, clientPublicKey, "1", ", ".join(args))
+          self.clientsocket.send(cliMsg)
           #Authenticator.callMethod(dataMethod)
+          dataForArgs = self.clientsocket.recv(1024)
+          dataForArgs = crypto.decryptData(self.c, dataForArgs)
+          command, dataLen, dataForInputArgs, checksum = messageParser.parse(self.server.parser, dataForArgs)
+          dataForInputArgs = dataForInputArgs.decode("ASCII")
+          print(dataForInputArgs)
+          RunResults=self.server.Authenticator.callMethod(dataMethod,self.username,tuple(dataForInputArgs.split(', ')))#[0:len(dataForInputArgs)-1])
+          print(RunResults)
+          #just need to send these back to the user now
 
 	# await user log off
  	# listen for commands call for authenticator
@@ -374,10 +388,10 @@ class Server():
     mc = c.cursor()
     auditLogs = []
     mc.execute("SELECT * FROM audit ORDER BY TimeStamp DESC")
-    result = str(list(mc.fetchone()))
-    assert result not None, "Error: Audits are empty."
+    result = str(mc.fetchone())
+    assert result != "", "Error: Audits are empty."
     m = hashlib.md5()
-    m.update(result)
+    m.update(result.encode("UTF-8"))
     hashedResult = m.hexdigest()
     c.close()
     return hashedResult
