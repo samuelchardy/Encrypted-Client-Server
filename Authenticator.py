@@ -37,14 +37,15 @@ class Authenticator:  # <---------------------NEEDS TO BECOME A SERVER SUB-CLASS
     return Authenticator.__instance
 
 
-  def __init__(self, ConnectDB):
+  def __init__(self, ConnectDB,LastAuditLogHash):
     """ Virtually private constructor. """
     if Authenticator.__instance != None:
         raise Exception("This class is a singleton!")
     else:
         Authenticator.__instance = self
     self.Methods=dict()
-    self.connectDB=ConnectDB
+    self.connectDB=self.ConnectDB
+    self.LastAuditLogHash=LastAuditLogHash
     #Appointments
     self.__AddMethod("getApp",self.getAppointmentByPID, [0,1])
     self.__AddMethod("appApp",self.appendAppointmentByPID, [1])
@@ -114,7 +115,8 @@ class Authenticator:  # <---------------------NEEDS TO BECOME A SERVER SUB-CLASS
       sID = self.getUserID(sub)
     else:
       sID = None
-    mc.execute("INSERT INTO audit(UserID, methodCalled, Success, UserSubject, TimeStamp) VALUES (%s,%s,%s,%s,%s)", (myID, methodname, success, sID, validTime))
+    self.server.hashPreviousLog
+    mc.execute("INSERT INTO audit(UserID, methodCalled, Success, UserSubject, TimeStamp,PreviousHash) VALUES (%s,%s,%s,%s,%s,%s)", (myID, methodname, success, sID, validTime,self.LastAuditLogHash()))
     c.commit()
     c.close()
     return ReturnDict
@@ -179,7 +181,7 @@ class Authenticator:  # <---------------------NEEDS TO BECOME A SERVER SUB-CLASS
     #if patient has the same ward as current staff id
     #update field with value at key point
     pID=self.getUserID(patientUser)
-    sID=getStaffID(staffUser)
+    sID=self.getStaffID(staffUser)
     c= self.connectDB()# will become self.server.DB()
     mc = c.cursor()
       #Gets all current values
@@ -242,7 +244,7 @@ class Authenticator:  # <---------------------NEEDS TO BECOME A SERVER SUB-CLASS
     c= self.connectDB()# will become self.server.DB()
     mc = c.cursor()
     pID = self.getUserID(patientUser)
-    staffID = getStaffID(staffUser)
+    staffID = self.getStaffID(staffUser)
     mc.execute("INSERT INTO record(UserId, Doctor) VALUES(%s,%s)",(pID, staffID))
     c.close()
 

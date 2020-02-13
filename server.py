@@ -228,7 +228,7 @@ class Server():
       uID = Authenticator.getUserID(self.server.Authenticator, username)
       dt=datetime.now()
       now= dt.strftime("%Y-%m-%d %H:%M:%S")
-      mc.execute("INSERT INTO audit(userid, methodcalled, success, timestamp) VALUES(%s,%s,%s,%s)",(uID,"Timeout",False,now))
+      mc.execute("INSERT INTO audit(userid, methodcalled, success, timestamp,PreviousHash) VALUES(%s,%s,%s,%s,%s)",(uID,"Timeout",False,now,self.server.hashPreviousLog()))
       c.commit()
       c.close()
       print("Logged timeout")
@@ -240,7 +240,7 @@ class Server():
       uID = Authenticator.getUserID(self.server.Authenticator, username)
       dt=datetime.now()
       now= dt.strftime("%Y-%m-%d %H:%M:%S")
-      mc.execute("INSERT INTO audit(userid, methodcalled, success, timestamp) VALUES(%s,%s,%s,%s)",(uID,"LoginAttempt",success,now))
+      mc.execute("INSERT INTO audit(userid, methodcalled, success, timestamp,PreviousHash) VALUES(%s,%s,%s,%s,%s)",(uID,"LoginAttempt",success,now,self.server.hashPreviousLog()))
       c.commit()
       print("Logged login attempt")
       c.close()
@@ -329,6 +329,7 @@ class Server():
         return False
 
 
+
     def run(self):
       print ("Connection from : "+ str(self.clientAddress))
       msg = ''
@@ -366,8 +367,22 @@ class Server():
                                 host="den1.mysql6.gear.host",
                                 database="threesixthreedb")
     return conn
- 
 
+    
+  def hashPreviousLog(self):
+    c = self.connectDB()
+    mc = c.cursor()
+    auditLogs = []
+    mc.execute("SELECT * FROM audit ORDER BY TimeStamp DESC")
+    result = str(list(mc.fetchone()))
+    assert result not None, "Error: Audits are empty."
+    m = hashlib.md5()
+    m.update(result)
+    hashedResult = m.hexdigest()
+    c.close()
+    return hashedResult
+
+  
   def __init__(self,port=9999):
     self.serverSocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     self.serverSocket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
@@ -380,7 +395,7 @@ class Server():
     self.emailAddr='363hospitalmfaservice@gmail.com'
     self.pw='InsecurePassword'
     self.DB=self.connectDB
-    self.Authenticator=Authenticator(self.connectDB)
+    self.Authenticator=Authenticator(self.connectDB,self.hashPreviousLog)
     
     #INITIALISE MESSAGEPARSER
     self.parser = messageParser()
