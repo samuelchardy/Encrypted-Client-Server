@@ -204,7 +204,7 @@ class Server():
         results = mc.fetchall()
         return results[0][0]
       except:
-        return null
+        return None
 
 
     def signUp(self, username, password, secret, dob, surname, forename, email):
@@ -218,6 +218,7 @@ class Server():
       mc.execute("SELECT UserID from personalinfo where Username = '"+username+"'")
       results = mc.fetchall()
       userID = results[0][0] 
+      print("your ID Happens to be " + userID)
       mc.execute("INSERT INTO roles(UserID,RoleID) Values(%s,%s)",(userID,0))
       c.commit()
       c.close()	  
@@ -227,7 +228,7 @@ class Server():
     def timeoutLogin(self, username):
       c = self.server.DB()
       mc = c.cursor()
-      uID = Authenticator.getUserID(self.server.Authenticator, username)
+      uID = self.server.Authenticator.getUserID(username)
       dt=datetime.now()
       now= dt.strftime("%Y-%m-%d %H:%M:%S")
       mc.execute("INSERT INTO audit(userid, methodcalled, success, timestamp,PreviousHash) VALUES(%s,%s,%s,%s,%s)",(uID,"Timeout",False,now,self.server.hashPreviousLog()))
@@ -239,7 +240,7 @@ class Server():
     def loginAttempt(self, username, success):
       c = self.server.DB()
       mc = c.cursor()
-      uID = Authenticator.getUserID(self.server.Authenticator, username)
+      uID = self.server.Authenticator.getUserID( username)
       dt=datetime.now()
       now= dt.strftime("%Y-%m-%d %H:%M:%S")
       mc.execute("INSERT INTO audit(userid, methodcalled, success, timestamp,PreviousHash) VALUES(%s,%s,%s,%s,%s)",(uID,"LoginAttempt",success,now,self.server.hashPreviousLog()))
@@ -253,7 +254,7 @@ class Server():
       c = self.server.DB()
       mc = c.cursor()
       clear = False
-      uID = Authenticator.getUserID(self.server.Authenticator, username)
+      uID = self.server.Authenticator.getUserID( username)
       mc.execute("SELECT success from audit where methodcalled = 'LoginAttempt' and userid = "+str(uID)+" order by timestamp desc limit 9")
       results = mc.fetchall()
       for res in results:
@@ -324,7 +325,7 @@ class Server():
       if  time_between_insertion.days>14:
         print ("The insertion date is older than 14 days")
         return True
-        mc.execute("update login set LastValidation = %s where username = %s",(cTime, username))
+        mc.execute("update login set LastValidation = %s where username = %s",(cTime, user))
         c.commit()
       else:
         print ("The insertion date is not older than 14 days")
@@ -343,7 +344,9 @@ class Server():
       self.authenticate(clientPublicKey)
       #ACCESS TO MAIN FUNCTIONALITY IF YOU HAVE THE RGHT ROLE
       while self.loggedin:
-        roles = self.server.Authenticator.callMethod("getRoles", self.username,self.username)
+        # this needs first credential to be of admin role to lookup roles of given user.
+        print("looking up your roles by username" +self.username +"!")
+        roles = self.server.Authenticator.getRoleBySID(self.username)
         methods = self.server.Authenticator.returnValidMethods(roles)
         methods = methods[0:len(methods)-1]
         methodsStr = ""
@@ -361,7 +364,7 @@ class Server():
           dataMethod = dataMethod.decode("ASCII").strip()
           args=self.server.Authenticator.listMethodDetails(dataMethod)
           print(dataMethod)
-          cliMsg = messageParser.make(self.server.parser, self.c, clientPublicKey, "1", ", ".join(args))
+          cliMsg = messageParser.make(self.server.parser, self.c, clientPublicKey, "1", ",".join(args))
           self.clientsocket.send(cliMsg)
           #Authenticator.callMethod(dataMethod)
           dataForArgs = self.clientsocket.recv(1024)
@@ -369,8 +372,20 @@ class Server():
           command, dataLen, dataForInputArgs, checksum = messageParser.parse(self.server.parser, dataForArgs)
           dataForInputArgs = dataForInputArgs.decode("ASCII")
           print(dataForInputArgs)
-          RunResults=self.server.Authenticator.callMethod(dataMethod,self.username,tuple(dataForInputArgs.split(', ')))#[0:len(dataForInputArgs)-1])
+          RunResults=self.server.Authenticator.callMethod(dataMethod,self.username,dataForInputArgs.split(','))#[0:len(dataForInputArgs)-1])
           print(RunResults)
+          if RunResults.get("Success"):
+            Message=str(RunResults.get("Values"))
+          else:
+            Message="Looks like you need to check your privilege"
+          cliMsg = messageParser.make(self.server.parser, self.c, clientPublicKey, "1", Message)
+          self.clientsocket.send(cliMsg)
+          time.sleep(30)
+          for method in methods:
+            methodsStr = methodsStr + method + ","
+
+          cliMsg = messageParser.make(self.server.parser, self.c, clientPublicKey, "1", methodsStr)
+          self.clientsocket.send(cliMsg)
           #just need to send these back to the user now
 
 	# await user log off
@@ -386,7 +401,7 @@ class Server():
   def hashPreviousLog(self):
     c = self.connectDB()
     mc = c.cursor()
-    auditLogs = []
+    
     mc.execute("SELECT * FROM audit ORDER BY TimeStamp DESC")
     result = str(mc.fetchone())
     assert result != "", "Error: Audits are empty."

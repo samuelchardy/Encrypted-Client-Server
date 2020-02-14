@@ -8,23 +8,26 @@ class Authenticator:  # <---------------------NEEDS TO BECOME A SERVER SUB-CLASS
     # stop it being overwritten 
 
 
-  def getUserID(self,Username):
+  def getUserID(self,subjectUserName):
     c=self.connectDB()# will become self.server.DB()
     res = -1
     mc = c.cursor()
-    mc.execute("Select UserID from personalinfo where username = "+str(Username[0]))
+    mc.execute("Select UserID from personalinfo where Username = '"+str(subjectUserName)+"'")
     results = mc.fetchall()
+    
     if mc.rowcount>0:
       res = results[0][0]
+      print(res)
     c.close()
+    print("in Get user ID" + str(res))
     return res
 
 
-  def getStaffID(self,Username ):
+  def getStaffID(self,subjectUserName ):
     c= self.connectDB()# will become self.server.DB()
     res = -1    
     mc = c.cursor()
-    mc.execute("Select staffID from staff where username = "+str(Username[0]))
+    mc.execute("Select staffID from staff where Username = '"+str(subjectUserName)+"'")
     results = mc.fetchall()
     if mc.rowcount>0:
       res = results[0][0]
@@ -34,10 +37,10 @@ class Authenticator:  # <---------------------NEEDS TO BECOME A SERVER SUB-CLASS
 
   __instance = None
   @staticmethod 
-  def getInstance():
+  def getInstance(ConnectDB,LastAuditLogHash):
     """ Static access method. """
     if Authenticator.__instance == None:
-        Authenticator()
+        Authenticator(ConnectDB,LastAuditLogHash)
     return Authenticator.__instance
 
 
@@ -79,7 +82,7 @@ class Authenticator:  # <---------------------NEEDS TO BECOME A SERVER SUB-CLASS
     self.__AddMethod("getStaffInfo",self.getStaffInfoByUsername, [1,5,6])
     self.__AddMethod("appStaffInfo",self.appendStaffInfoByUsername, [5])
     #Role Assignment
-    self.__AddMethod("getRoles",self.getRoleBySID,[6])
+    self.__AddMethod("getRoles",self.getRoleBySID,[0,6]) #remove the 0
     self.__AddMethod("elevateRole",self.elevate, [6])
     #lookupIDs
     self.__AddMethod("getUserID",self.getUserID,[0,1,2,3,4,5,6])
@@ -100,11 +103,11 @@ class Authenticator:  # <---------------------NEEDS TO BECOME A SERVER SUB-CLASS
     return self.Methods.get(str(methodName)).get("Args")
 
 
-  def callMethod(self, methodName, username, args = None):
+  def callMethod(self, methodName, UserName, args = None):
     #If role allows perform method
     ReturnDict={}
     hasRoles = []
-    myID = self.getUserID(username)
+    myID = self.getUserID(UserName)
     c = self.connectDB() # will become self.server.DB()
     mc = c.cursor()
     mc.execute("SELECT RoleID FROM roles WHERE UserID = "+ str(myID))
@@ -113,21 +116,22 @@ class Authenticator:  # <---------------------NEEDS TO BECOME A SERVER SUB-CLASS
       hasRoles.append(res[0])
   
     ##NamesMethods=print(a[methodName] for a in [set(a.roles)&set(hasRoles).len()>0 for a in Methods]) <-- Steve's weird shit
-    success = False
-    if len(list(set(self.Methods.get(methodName).get("rolesAccess")) & set(hasRoles)))>=1:
-      ReturnDict.update({"Values":self.Methods.get(methodName).get("call")(**dict(zip(self.Methods.get(str(methodName)).get("Args"),args), "Success":True})
+    KWARGS=dict(zip(self.Methods.get(str(methodName)).get("Args"),args))
+    sub = KWARGS.get("subjectUserName", "NOONE AFFECTED")
+    print(KWARGS)
+    sID = self.getUserID(sub)
+    print(sID) #==-1 ???
+    if len(list(set(self.Methods.get(methodName).get("rolesAccess")) & set(hasRoles)))>=1 and (hasRoles!=[0] or myID==sID): #this lil bit on the end means that if your just role 0 i.e patient you can only change your own record
+      
+      ReturnDict.update({"Values":self.Methods.get(methodName).get("call")(**KWARGS), "Success":True})
       #success = True
       #return self.Methods.get(methodName).get("call")(arg in args)
-    else: 
+    else:
       ReturnDict.update({"Values":{}, "Success":False})
     dt=datetime.now()
     validTime=dt.strftime("%Y-%m-%d %H:%M:%S")
-    sub = args[0]
-    if isinstance(sub, str):
-      sID = self.getUserID(sub)
-    else:
-      sID = None
-    mc.execute("INSERT INTO audit(UserID, methodCalled, Success, UserSubject, TimeStamp,PreviousHash) VALUES (%s,%s,%s,%s,%s,%s)", (myID, methodName, str(ReturnDict.get("Success")), sID, validTime, self.LastAuditLogHash()))
+    
+    mc.execute("INSERT INTO audit(UserID, methodCalled, Success, UserSubject, TimeStamp,PreviousHash) VALUES (%s,%s,%s,%s,%s,%s)", (myID, methodName, ReturnDict.get("Success"), sub, validTime, self.LastAuditLogHash()))
     c.commit()
     c.close()
     return ReturnDict
@@ -142,11 +146,11 @@ class Authenticator:  # <---------------------NEEDS TO BECOME A SERVER SUB-CLASS
     return NamesMethods
 
 
-  def getAppointmentByPID(self, username ):#finds the next appointment for patient i    
+  def getAppointmentByPID(self, subjectUserName ):#finds the next appointment for patient i    
     c= self.connectDB()# will become self.server.DB()
     res = "No appointment"
     mc = c.cursor()
-    mc.execute("SELECT NextAppointment from Record where Username = '" + username+"'")
+    mc.execute("SELECT NextAppointment from Record where Username = '" + subjectUserName+"'")
     results = mc.fetchall()
     if mc.rowcount>0:
       res = results[0][0]
@@ -154,35 +158,35 @@ class Authenticator:  # <---------------------NEEDS TO BECOME A SERVER SUB-CLASS
     return res
 
 
-  def appendAppointmentByPID(self, username, value):
+  def appendAppointmentByPID(self, subjectUserName, value):
     #updates the next appointment for patient id
     #with key, value
     c= self.connectDB()# will become self.server.DB()
     mc = c.cursor()
-    pID = self.getUserID(username)
+    pID = self.getUserID(subjectUserName)
     if pID>0:  
       mc.execute("UPDATE Record SET NextAppointment = %s WHERE UserID = %s",(value,pID))
     c.close()
 
 
-  def writeToAppointmentByPID(self, username):
+  def writeToAppointmentByPID(self, subjectUserName, value):
     #sends a request to create a new appointment for patient id
     c= self.connectDB()# will become self.server.DB()
     mc = c.cursor()
-    pID = self.getUserID(username)
+    pID = self.getUserID(subjectUserName)
     if pID>0:
       mc.execute("UPDATE Record SET NextAppointment = %s WHERE UserID = %s",(value,pID))
     c.close()
 
 
   #Patient record methods 
-  def getRecordByPID(self, username):
+  def getRecordByPID(self, subjectUserName):
     #if patient has the same ward as current staff id
     #return a Record containing patients data
     c= self.connectDB()# will become self.server.DB()
     resul = []
     mc = c.cursor()
-    pID=self.getUserID(username)
+    pID=self.getUserID(subjectUserName)
     if pID>0:
       c.execute("SELECT * from Record where UserID = "+str(pID))
       results = mc.fetchall()
@@ -246,7 +250,7 @@ class Authenticator:  # <---------------------NEEDS TO BECOME A SERVER SUB-CLASS
           else:
             result = "not valid keyword"
 
-          mc.execute("UPDATE record SET NextAppointment = %s, Bed = %s, Ward = %s where UserID = %s and Doctor = %s",(NA, B, W, pID, staffID))
+          mc.execute("UPDATE record SET NextAppointment = %s, Bed = %s, Ward = %s where UserID = %s and Doctor = %s",(NA, B, W, pID, sID))
         c.commit()
         #c.close()
   
@@ -255,39 +259,39 @@ class Authenticator:  # <---------------------NEEDS TO BECOME A SERVER SUB-CLASS
     return result
 
 
-  def writeToRecordByPID(self, patientUser, staffUser):
+  def writeToRecordByPID(self, subjectUserName, staffUser):
     ######## Needs to get staffID from whoever is logged in ###########
     #if patient has the same ward as current staff id and staffid is the gp/doctors 
     #assert in my list of patients -- a good check but not authentication means
     #send request for patient record to write
     c= self.connectDB()# will become self.server.DB()
     mc = c.cursor()
-    pID = self.getUserID(patientUser)
-    staffID = getStaffID(staffUser)
+    pID = self.getUserID(subjectUserName)
+    staffID = self.getStaffID(staffUser)
     if staffID>0 and pID>0:
       mc.execute("INSERT INTO record(UserId, Doctor) VALUES(%s,%s)",(pID, staffID))
     c.close()
 
 
   #Get user information
-  def getUserInfoByUsername(self, username):
+  def getUserInfoByUsername(self, subjectUserName):
     c= self.connectDB()# will become self.server.DB()
     resul = []
     mc = c.cursor()
-    mc.execute("Select surname, forename, dob, email from  personalinfo where username = '"+username+"'")
+    mc.execute("Select surname, forename, dob, email from  personalinfo where username = '"+subjectUserName+"'")
     results = mc.fetchall()
     for res in results:
-      resul.append()
+      resul.append(res)
       #print(res) 
     c.close()
     return resul
 
 
   # update user fields
-  def updateUsers(self, username, key, value):
+  def updateUsers(self, subjectUserName, key, value):
     c= self.connectDB()# will become self.server.DB()
     mc = c.cursor()
-    pID = self.getUserID(username)
+    pID = self.getUserID(subjectUserName)
     result="Invalid Username"
     if pID>0:
       if isinstance(key,str):
@@ -313,16 +317,16 @@ class Authenticator:  # <---------------------NEEDS TO BECOME A SERVER SUB-CLASS
     return result
   
   #Update password
-  def updatePassword(self, username, newPassword):
+  def updatePassword(self, subjectUserName, newPassword):
     c= self.connectDB()# will become self.server.DB()
     res = False
     mc = c.cursor()
-    mc.execute("select secretanswer from login where username = '" + username + "'")
+    mc.execute("select secretanswer from login where username = '" + subjectUserName + "'")
     results = mc.fetchall()
     if mc.rowcount>0:
       sec = results[0][0]
       newPassword += sec
-      mc.execute("UPDATE login set password = %s where username = %s",(newPassword,username))
+      mc.execute("UPDATE login set password = %s where username = %s",(newPassword,subjectUserName))
       c.commit()
       res = True
     c.close()
@@ -330,21 +334,21 @@ class Authenticator:  # <---------------------NEEDS TO BECOME A SERVER SUB-CLASS
 
 
   #Update last vaidated time
-  def updateValidation(self, username):
+  def updateValidation(self, subjectUserName):
     c= self.connectDB()# will become self.server.DB()
     mc = c.cursor()
     dt=datetime.now()
     now=dt.strftime("%Y-%m-%d %H:%M:%S")
-    mc.execute("UPDATE login SET lastValidation = %s WHERE username = %s",(username, now))
+    mc.execute("UPDATE login SET lastValidation = %s WHERE username = %s",(subjectUserName, now))
     c.commit()
     c.close()
 
 
-  def addPrescription(self, username, value):
+  def addPrescription(self, subjectUserName, value):
   # add Prescription
     c= self.connectDB()# will become self.server.DB()
     mc = c.cursor()
-    pID = self.getUserID(username)
+    pID = self.getUserID(subjectUserName)
     if pID>0:
       mc.execute("INSERT INTO prescription(UserID, Prescription,current) VALUES(%s,%s,%s)",(pID, value,True))
       c.commit()
@@ -352,11 +356,11 @@ class Authenticator:  # <---------------------NEEDS TO BECOME A SERVER SUB-CLASS
 
 
   # All history
-  def getPrescriptionHistory(self, username):  
+  def getPrescriptionHistory(self, subjectUserName):  
     c= self.connectDB()# will become self.server.DB()
     mc = c.cursor()
     resul = []
-    pID = self.getUserID(username)
+    pID = self.getUserID(subjectUserName)
     if pID>0:
       mc.execute("Select prescription from prescription where UserId ="+str(pID))
       results = mc.fetchall()
@@ -368,11 +372,11 @@ class Authenticator:  # <---------------------NEEDS TO BECOME A SERVER SUB-CLASS
     
 
   # current 
-  def getCurrentPrescription(self, username):
+  def getCurrentPrescription(self, subjectUserName):
     c= self.connectDB()# will become self.server.DB()
     mc = c.cursor()
     resul = []
-    pID = self.getUserID(username)
+    pID = self.getUserID(subjectUserName)
     if pID>0:
       mc.execute("Select prescription from prescription where UserId = %s and current = %s",(pID,True))
       results = mc.fetchall()
@@ -384,10 +388,10 @@ class Authenticator:  # <---------------------NEEDS TO BECOME A SERVER SUB-CLASS
 
 
   # Conditions
-  def createCondition(self, username, value): 
+  def createCondition(self, subjectUserName, value): 
     c= self.connectDB()# will become self.server.DB()
     mc = c.cursor()
-    pID = self.getUserID(username)
+    pID = self.getUserID(subjectUserName)
     if pID>0: 
       mc.execute("INSERT INTO cond(UserID ond urrent) VALUES(%s,%s,%s)",(pID, value,True))
       c.commit()
@@ -395,11 +399,11 @@ class Authenticator:  # <---------------------NEEDS TO BECOME A SERVER SUB-CLASS
   
   
   # All history
-  def getConditionHistory(self, username):
+  def getConditionHistory(self, subjectUserName):
     c= self.connectDB()# will become self.server.DB()
     mc = c.cursor()
     resul = []
-    pID = self.getUserID(username) 
+    pID = self.getUserID(subjectUserName) 
     if pID>0: 
       mc.execute("Select cond from cond where UserId = "+str(pID))
       results = mc.fetchall()
@@ -411,11 +415,11 @@ class Authenticator:  # <---------------------NEEDS TO BECOME A SERVER SUB-CLASS
 
 
   # current 
-  def getCurrentCondition(self, username):  
+  def getCurrentCondition(self, subjectUserName):  
     c= self.connectDB()# will become self.server.DB()
     mc = c.cursor()
     resul = []
-    pID = self.getUserID(username)
+    pID = self.getUserID(subjectUserName)
     if pID>0:
       mc.execute("Select cond from cond where UserId = %s and current = %s",(pID,True))
       results = mc.fetchall()
@@ -428,19 +432,19 @@ class Authenticator:  # <---------------------NEEDS TO BECOME A SERVER SUB-CLASS
 
 
   #Staff data methods
-  def addStaffByUsername(self, username):
+  def addStaffByUsername(self, subjectUserName):
     c= self.connectDB()# will become self.server.DB()
     mc = c.cursor()
-    mc.execute("INSERT INTO staff(username) VALUES ('"+uName+"')")
+    mc.execute("INSERT INTO staff(username) VALUES ('"+subjectUserName+"')")
     c.close()
 
 
-  def getStaffInfoByUsername(self, username):
+  def getStaffInfoByUsername(self, subjectUserName):
     #finds and returns the information related to the staff with Username
     c= self.connectDB()# will become self.server.DB()
     resul = []
     mc = c.cursor()
-    mc.execute("SELECT * FROM staff INNER JOIN hours ON hours.staffid = staff.staffid where staff.username = '"+username+"'")
+    mc.execute("SELECT * FROM staff INNER JOIN hours ON hours.staffid = staff.staffid where staff.username = '"+subjectUserName+"'")
     results = mc.fetchall()
     for res in results:
       resul.append(res)
@@ -449,7 +453,7 @@ class Authenticator:  # <---------------------NEEDS TO BECOME A SERVER SUB-CLASS
     return resul
 
 
-  def appendStaffInfoByUsername(self, username, key, value):
+  def appendStaffInfoByUsername(self, subjectUserName, key, value):
     #if staff has the same ward as current staffID (managers only)
     #update field with value at key point
     c= self.connectDB()# will become self.server.DB()
@@ -458,11 +462,11 @@ class Authenticator:  # <---------------------NEEDS TO BECOME A SERVER SUB-CLASS
       key= key.lower()
   
       if key == "ward": 
-        mc.execute("UPDATE staff SET ward = %s WHERE username = %s", (value, username))
+        mc.execute("UPDATE staff SET ward = %s WHERE username = %s", (value, subjectUserName))
       elif key == "boss":
-        mc.execute("UPDATE staff SET LineManager = %s WHERE username = %s", (value, username))
+        mc.execute("UPDATE staff SET LineManager = %s WHERE username = %s", (value, subjectUserName))
       elif key =="hours":
-        mc.execute("select * from staff where username = '"+username+"'")
+        mc.execute("select * from staff where username = '"+subjectUserName+"'")
         res = mc.fetchall()
         if mc.rowcount>0:
           staffID=res[0][0]
@@ -495,30 +499,31 @@ class Authenticator:  # <---------------------NEEDS TO BECOME A SERVER SUB-CLASS
 
 
   #Role Assignment
-  def getRoleBySID(self, username):
+  def getRoleBySID(self, subjectUserName):
     #returns the role of the staff id's account
     c = self.connectDB()# will become self.server.DB()
     mc = c.cursor()
     result=[]
-    userid = self.getUserID(username)
+    print("fetching your roles by SID"+subjectUserName)
+    userid = self.getUserID(subjectUserName)
     if userid>0:
-      mc.execute("select distinct roleID from roles where userID="+str(userid))
+      mc.execute("select distinct roleID from roles where userID='"+str(userid)+"'")
       results = mc.fetchall()
       for res in results:
         result.append(res[0])
   
       ##print(res)
-      c.close()
+    c.close()
     return result
 
 
-  def elevate(self, username, key, value, value2 = None):
+  def elevate(self, subjectUserName, key, value, value2 = None):
     #Alter the role assigned to new value of the Account with ID
     #0 = patient, 1 = receptionist, 2 = nurse, 3 = doctor
     #4 = regulator, 5 = managerial staff, 6 = Sytem admin]
     c= self.connectDB()# will become self.server.DB()
     mc = c.cursor()
-    userid = self.getUserID(username)
+    userid = self.getUserID(subjectUserName)
     result = "Invalid Username"
     if userid>0:
       if isinstance(key,str):

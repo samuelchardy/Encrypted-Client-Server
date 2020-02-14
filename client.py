@@ -131,10 +131,15 @@ while True:
                         splitArgs = args.split(", ")
                         userArgInputs = []
                         for arg in splitArgs:
-                            print(arg + ": ")
-                            userArgInputs.append(input())
+                            print(arg + ":")
+                            userArgInputs.append(input().strip())
                         dataMsg = messageParser.make(parser, cr, serverPublicKey, "A", ", ".join(userArgInputs))
                         clientSocket.send(dataMsg)
+                        Reply = clientSocket.recv(1024)
+                        Reply = crypto.decryptData(cr, Reply)
+                        _, _, Reply, _ = messageParser.parse(parser, Reply)
+                        print(Reply.decode("ASCII"))
+                        time.sleep(30)
 
                 else:
                     attempts -= 1
