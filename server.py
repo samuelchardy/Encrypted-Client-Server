@@ -219,7 +219,7 @@ class Server():
       mc.execute("SELECT UserID from personalinfo where Username = '"+username+"'")
       results = mc.fetchall()
       userID = results[0][0]       
-      print("your ID Happens to be " + userID)
+      print("your ID Happens to be " + str(userID))
       mc.execute("INSERT INTO roles(UserID,RoleID) Values(%s,%s)",(userID,0))
       c.commit()
       c.close()	  
@@ -385,7 +385,7 @@ class Server():
           time.sleep(30)
           for method in methods:
             methodsStr = methodsStr + method + ","
-
+          print("METHOD STRING : ",methodsStr)
           cliMsg = messageParser.make(self.server.parser, self.c, clientPublicKey, "1", methodsStr)
           self.clientsocket.send(cliMsg)
           #just need to send these back to the user now

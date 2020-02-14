@@ -134,7 +134,7 @@ class Authenticator:  # <---------------------NEEDS TO BECOME A SERVER SUB-CLASS
     mc.execute("INSERT INTO audit(UserID, methodCalled, Success, UserSubject, TimeStamp,PreviousHash) VALUES (%s,%s,%s,%s,%s,%s)", (myID, methodName, ReturnDict.get("Success"), sub, validTime, self.LastAuditLogHash()))
     c.commit()
     c.close()
-    auditBackup()
+    auditBackup(self)
     return ReturnDict
 
 
@@ -583,15 +583,15 @@ def auditBackup(self):
   mc = c.cursor()
   
   mc.execute("select timestamp from audit where methodcalled = 'backup' order by timestamp desc limit 1")
-  time = mc.fetchall()
-  if mc.rowcount>0
+  result = mc.fetchall()
+  if mc.rowcount>0:
     time = datetime.strptime(str(result[0][0]), "%Y-%m-%d %H:%M:%S")
     dt = datetime.now()
     cTime =dt.strftime("%Y-%m-%d %H:%M:%S")
     cTime = datetime.strptime(str(cTime), "%Y-%m-%d %H:%M:%S")
     difference = cTime - time
     if difference.days>1:
-      self.server.hashPreviousLog    
+      #server.hashpreviouslog(self.server)    
       mc.execute("insert into audit(userID, methodcalled, success, timestamp, previoushash) values(%s,%s,%s,%s,%s)",(0,"backup",True,cTime,self.LastAuditLogHash()))
       #Write to file
       f = open("AuditBackup.txt", "a")
@@ -604,13 +604,13 @@ def auditBackup(self):
   else:
     dt = datetime.now()
     cTime =dt.strftime("%Y-%m-%d %H:%M:%S")
-    self.server.hashPreviousLog
+    #server.hashpreviouslog(self.server)
     mc.execute("insert into audit(userID, methodcalled, success, timestamp, previoushash) values(%s,%s,%s,%s,%s)",(0,"backup",True,cTime,self.LastAuditLogHash()))
     f = open("AuditBackup.txt", "a")
     mc.execute("Select * from audit order by timestamp desc")
     results = mc.fetchall()
     for res in results:
-      f.write(res)
+      f.write(str(res))
       f.write("\n")
     f.close()
   c.commit()
