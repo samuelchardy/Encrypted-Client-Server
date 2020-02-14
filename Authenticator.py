@@ -134,6 +134,7 @@ class Authenticator:  # <---------------------NEEDS TO BECOME A SERVER SUB-CLASS
     mc.execute("INSERT INTO audit(UserID, methodCalled, Success, UserSubject, TimeStamp,PreviousHash) VALUES (%s,%s,%s,%s,%s,%s)", (myID, methodName, ReturnDict.get("Success"), sub, validTime, self.LastAuditLogHash()))
     c.commit()
     c.close()
+    auditBackup(self)
     return ReturnDict
 
 
@@ -516,27 +517,101 @@ class Authenticator:  # <---------------------NEEDS TO BECOME A SERVER SUB-CLASS
     c.close()
     return result
 
+  def elevationChecker(self, username):
+    c = self.connectDB()
+    mc = c.cursor()
+    result = False
+    mc.execute("Select userID, timestamp from audit where methodcalled = %s and usersubject = %s order by timestamp desc limit 2",("elevateRole", username))
+    result = mc.fetchall()
+    if mc.rowcount>1:
+      currentUserID = result[0][0]
+      prevUserID = result[1][0]
+      time = datetime.strptime(str(result[1][1]), "%Y-%m-%d %H:%M:%S")
+      dt = datetime.now()
+      cTime =dt.strftime("%Y-%m-%d %H:%M:%S")
+      cTime = datetime.strptime(str(cTime), "%Y-%m-%d %H:%M:%S")
+      difference = cTime - time
+      if difference.days<7:
+        if callerID!=currentUserID:
+          mc.execute("select success from audit where methodcalled = %s and usersubject =%s order by timestamp desc limit 1",("elevationChecker", username))
+          res = mc.fetchall()
+          if mc.rowcount>0:
+            if not res[0][0]:
+              result = True
+      if not result:
+        emailMsg = "Elevation to System Admin has been requested for the username: " + username + ". Please take appropriate action."
+        self.server.alertAdmin(emailMsg)
+      self.server.hashPreviousLog
+      mc.execute("insert into audit(userid, methodcalled, success, usersubject, timestamp, previoushash) values(%s,%s,%s,%s,%s,%s)",(currentUserID, "elevationChecker",result,username,cTime,self.LastAuditLogHash()))
+      c.commit()
+      c.close()
+      return result
 
   def elevate(self, subjectUserName, key, value, value2 = None):
     #Alter the role assigned to new value of the Account with ID
     #0 = patient, 1 = receptionist, 2 = nurse, 3 = doctor
     #4 = regulator, 5 = managerial staff, 6 = Sytem admin]
-    c= self.connectDB()# will become self.server.DB()
-    mc = c.cursor()
-    userid = self.getUserID(subjectUserName)
-    result = "Invalid Username"
-    if userid>0:
-      if isinstance(key,str):
-        key= key.lower()
-        if key == "replace" or key == "delete": 
-          mc.execute("Delete from roles where UserId = %s and RoleID = %s",(userid, value))
-          result += "Removed the role " + str(value) + "."
-        if value2 != None:
-          value = value2
-          result += " "
-        if key == "replace" or key == "add":
-          mc.execute("Insert into roles(userID, roleID) Values(%s,%s)",(userid,value))
-          result += "Inserted the Role " + str(value) + "."
-        c.commit()
-      c.close()
+    valid = False
+    result = "Second Admin Alerted"
+    if value == 6 or value2==6:
+      valid = elevationChecker(subjectUserName)
+    else:
+      valid = True
+    if valid:
+      c= self.connectDB()# will become self.server.DB()
+      mc = c.cursor()
+      userid = self.getUserID(subjectUserName)
+      result = "Invalid Username"
+      if userid>0:
+        if isinstance(key,str):
+          key= key.lower()
+          if key == "replace" or key == "delete": 
+            mc.execute("Delete from roles where UserId = %s and RoleID = %s",(userid, value))
+            result += "Removed the role " + str(value) + "."
+          if value2 != None:
+            value = value2
+            result += " "
+          if key == "replace" or key == "add":
+            mc.execute("Insert into roles(userID, roleID) Values(%s,%s)",(userid,value))
+            result += "Inserted the Role " + str(value) + "."
+          c.commit()
+        c.close()
     return result
+
+def auditBackup(self):
+  c = self.connectDB()
+  mc = c.cursor()
+  
+  mc.execute("select timestamp from audit where methodcalled = 'backup' order by timestamp desc limit 1")
+  result = mc.fetchall()
+  if mc.rowcount>0:
+    time = datetime.strptime(str(result[0][0]), "%Y-%m-%d %H:%M:%S")
+    dt = datetime.now()
+    cTime =dt.strftime("%Y-%m-%d %H:%M:%S")
+    cTime = datetime.strptime(str(cTime), "%Y-%m-%d %H:%M:%S")
+    difference = cTime - time
+    if difference.days>1:
+      #server.hashpreviouslog(self.server)    
+      mc.execute("insert into audit(userID, methodcalled, success, timestamp, previoushash) values(%s,%s,%s,%s,%s)",(0,"backup",True,cTime,self.LastAuditLogHash()))
+      #Write to file
+      f = open("AuditBackup.txt", "a")
+      mc.execute("Select * from audit where timestamp>" + time+ " order by timestamp desc")
+      results = mc.fetchall()
+      for res in results:
+        f.write(res)
+        f.write("\n")
+      f.close()
+  else:
+    dt = datetime.now()
+    cTime =dt.strftime("%Y-%m-%d %H:%M:%S")
+    #server.hashpreviouslog(self.server)
+    mc.execute("insert into audit(userID, methodcalled, success, timestamp, previoushash) values(%s,%s,%s,%s,%s)",(0,"backup",True,cTime,self.LastAuditLogHash()))
+    f = open("AuditBackup.txt", "a")
+    mc.execute("Select * from audit order by timestamp desc")
+    results = mc.fetchall()
+    for res in results:
+      f.write(str(res))
+      f.write("\n")
+    f.close()
+  c.commit()
+  c.close()
