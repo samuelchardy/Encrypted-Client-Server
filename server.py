@@ -218,7 +218,7 @@ class Server():
       mc.execute("INSERT INTO personalinfo(Username,Email,Surname,Forename,DOB) VALUES(%s,%s,%s,%s,%s)",(username,email,surname,forename,dob))
       mc.execute("SELECT UserID from personalinfo where Username = '"+username+"'")
       results = mc.fetchall()
-      userID = results[0][0] 
+      userID = results[0][0]       
       print("your ID Happens to be " + userID)
       mc.execute("INSERT INTO roles(UserID,RoleID) Values(%s,%s)",(userID,0))
       c.commit()
@@ -314,24 +314,25 @@ class Server():
       mc = c.cursor()
       mc.execute("SELECT LastValidation from login where username = '"+user+"'")
       insertion_date = mc.fetchall()
-      dt = datetime.now()
-      
-      insertion_date = datetime.strptime(str(insertion_date[0][0]), "%Y-%m-%d %H:%M:%S")
-      cTime =dt.strftime("%Y-%m-%d %H:%M:%S")
-      cTime = datetime.strptime(str(cTime), "%Y-%m-%d %H:%M:%S")
-      print(cTime)
-      print(insertion_date)
-      time_between_insertion = cTime - insertion_date
+      if mc.rowcount>0:
+        dt = datetime.now()
+        
+        insertion_date = datetime.strptime(str(insertion_date[0][0]), "%Y-%m-%d %H:%M:%S")
+        cTime =dt.strftime("%Y-%m-%d %H:%M:%S")
+        cTime = datetime.strptime(str(cTime), "%Y-%m-%d %H:%M:%S")
+        print(cTime)
+        print(insertion_date)
+        time_between_insertion = cTime - insertion_date
 
-      if  time_between_insertion.days>14:
-        print ("The insertion date is older than 14 days")
-        return True
-        mc.execute("update login set LastValidation = %s where username = %s",(cTime, user))
-        c.commit()
-      else:
-        print ("The insertion date is not older than 14 days")
-        return False
-
+        if  time_between_insertion.days>14:
+          print ("The insertion date is older than 14 days")
+          return True
+          mc.execute("update login set LastValidation = %s where username = %s",(cTime, user))
+          c.commit()
+        else:
+          print ("The insertion date is not older than 14 days")
+          return False
+      return False
 
 
     def run(self):
