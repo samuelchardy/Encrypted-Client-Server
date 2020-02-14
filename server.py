@@ -160,7 +160,8 @@ class Server():
         if attempts<0:
           self.timeoutLogin(self.username)
           if not self.checkLogins(self.username):
-            self.alertAdmin(self.username)
+            emailMsg = "The user: " + self.username + " has failed to login 9 times."
+            self.alertAdmin(emailMsg)
           attempts+=1
           delay=60
           for i in range(delay):
@@ -265,7 +266,7 @@ class Server():
       return clear
 
 
-    def alertAdmin(self, username):
+    def alertAdmin(self, text):
       print("Alerting sys admins of suspicious behaviour")
       #@title Email OTP to Recipient
       c = self.server.DB()
@@ -290,7 +291,7 @@ class Server():
       message["From"] = address
       message["To"] = ", ".join(recipients)
 
-      text = "The user: " + username + " has failed to login 9 times. Please execute order 66."
+      #text = "The user: " + username + " has failed to login 9 times. Please execute order 66."
 
       msgText = MIMEText(text, "plain")
       message.attach(msgText)
