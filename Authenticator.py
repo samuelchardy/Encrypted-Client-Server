@@ -548,6 +548,7 @@ def auditBackup(self):
   
   mc.execute("select timestamp from audit where methodcalled = 'backup' order by timestamp desc limit 1")
   time = mc.fetchall()
+
   if mc.rowcount>0:
     time = datetime.strptime(str(result[0][0]), "%Y-%m-%d %H:%M:%S")
     dt = datetime.now()
