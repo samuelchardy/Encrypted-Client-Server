@@ -217,7 +217,7 @@ class Server():
       mc.execute("INSERT INTO personalinfo(Username,Email,Surname,Forename,DOB) VALUES(%s,%s,%s,%s,%s)",(username,email,surname,forename,dob))
       mc.execute("SELECT UserID from personalinfo where Username = '"+username+"'")
       results = mc.fetchall()
-      userID = results[0][0] 
+      userID = results[0][0]       
       print("your ID Happens to be " + userID)
       mc.execute("INSERT INTO roles(UserID,RoleID) Values(%s,%s)",(userID,0))
       c.commit()
