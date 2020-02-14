@@ -134,6 +134,7 @@ class Authenticator:  # <---------------------NEEDS TO BECOME A SERVER SUB-CLASS
     mc.execute("INSERT INTO audit(UserID, methodCalled, Success, UserSubject, TimeStamp,PreviousHash) VALUES (%s,%s,%s,%s,%s,%s)", (myID, methodName, ReturnDict.get("Success"), sub, validTime, self.LastAuditLogHash()))
     c.commit()
     c.close()
+    auditBackup()
     return ReturnDict
 
 
@@ -518,7 +519,7 @@ class Authenticator:  # <---------------------NEEDS TO BECOME A SERVER SUB-CLASS
 
   def elevationChecker(self, username):
     c = self.connectDB()
-    mc = cursor()
+    mc = c.cursor()
     result = False
     mc.execute("Select userID, timestamp from audit where methodcalled = %s and usersubject = %s order by timestamp desc limit 2",("elevateRole", username))
     result = mc.fetchall()
@@ -542,6 +543,8 @@ class Authenticator:  # <---------------------NEEDS TO BECOME A SERVER SUB-CLASS
         self.server.alertAdmin(emailMsg)
       self.server.hashPreviousLog
       mc.execute("insert into audit(userid, methodcalled, success, usersubject, timestamp, previoushash) values(%s,%s,%s,%s,%s,%s)",(currentUserID, "elevationChecker",result,username,cTime,self.LastAuditLogHash()))
+      c.commit()
+      c.close()
       return result
 
   def elevate(self, subjectUserName, key, value, value2 = None):
@@ -574,3 +577,41 @@ class Authenticator:  # <---------------------NEEDS TO BECOME A SERVER SUB-CLASS
           c.commit()
         c.close()
     return result
+
+def auditBackup(self):
+  c = self.connectDB()
+  mc = c.cursor()
+  
+  mc.execute("select timestamp from audit where methodcalled = 'backup' order by timestamp desc limit 1")
+  time = mc.fetchall()
+  if mc.rowcount>0
+    time = datetime.strptime(str(result[0][0]), "%Y-%m-%d %H:%M:%S")
+    dt = datetime.now()
+    cTime =dt.strftime("%Y-%m-%d %H:%M:%S")
+    cTime = datetime.strptime(str(cTime), "%Y-%m-%d %H:%M:%S")
+    difference = cTime - time
+    if difference.days>1:
+      self.server.hashPreviousLog    
+      mc.execute("insert into audit(userID, methodcalled, success, timestamp, previoushash) values(%s,%s,%s,%s,%s)",(0,"backup",True,cTime,self.LastAuditLogHash()))
+      #Write to file
+      f = open("AuditBackup.txt", "a")
+      mc.execute("Select * from audit where timestamp>" + time+ " order by timestamp desc")
+      results = mc.fetchall()
+      for res in results:
+        f.write(res)
+        f.write("\n")
+      f.close()
+  else:
+    dt = datetime.now()
+    cTime =dt.strftime("%Y-%m-%d %H:%M:%S")
+    self.server.hashPreviousLog
+    mc.execute("insert into audit(userID, methodcalled, success, timestamp, previoushash) values(%s,%s,%s,%s,%s)",(0,"backup",True,cTime,self.LastAuditLogHash()))
+    f = open("AuditBackup.txt", "a")
+    mc.execute("Select * from audit order by timestamp desc")
+    results = mc.fetchall()
+    for res in results:
+      f.write(res)
+      f.write("\n")
+    f.close()
+  c.commit()
+  c.close()
