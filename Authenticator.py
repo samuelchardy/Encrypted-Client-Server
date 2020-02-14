@@ -82,7 +82,7 @@ class Authenticator:  # <---------------------NEEDS TO BECOME A SERVER SUB-CLASS
     self.__AddMethod("getStaffInfo",self.getStaffInfoByUsername, [1,5,6])
     self.__AddMethod("appStaffInfo",self.appendStaffInfoByUsername, [5])
     #Role Assignment
-    self.__AddMethod("getRoles",self.getRoleBySID,[0,6]) #remove the 0
+    self.__AddMethod("getRoles",self.getRoleBySID,[6]) #remove the 0
     self.__AddMethod("elevateRole",self.elevate, [6])
     #lookupIDs
     self.__AddMethod("getUserID",self.getUserID,[0,1,2,3,4,5,6])
